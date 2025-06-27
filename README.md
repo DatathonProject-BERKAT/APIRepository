@@ -1,1 +1,2 @@
-# APIRepository
+# ButterscotchProjectBetaV1
+Datathon Project

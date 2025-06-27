@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Item</title>
+</head>
+<body>
+  <div>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" id="videoInput" name="video" accept="video/mp4,video/webm" required>
+      <br><br>
+      <button type="submit">Upload Video</button>  
+    </form>
+  </div>
+  <div id = "progress_bar">
+    <img width = "5%"  src="static/decoration/spinner.gif">
+    <p id="percantage">0%</p>
+    <progress id = "progress" value="0" max="100"></progress>
+  </div>
+
+  <div id="item-list"></div>
+
+  <script>
+    const progressBar = document.getElementById("progress_bar");
+    progressBar.hidden = true;
+    const progress = document.getElementById("progress");
+    const percantage = document.getElementById("percantage");
+    
+
+    const apiUrl = '/api/items/';
+    const uploadForm = document.getElementById("uploadForm");
+    const videoInput = document.getElementById("videoInput");
+    
+    uploadForm.addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const formData = new FormData(uploadForm);
+      const file = videoInput.files[0];
+      if (!file) return alert("Please choose a file");
+
+      progress.value = 0;
+      progressBar.hidden = false;
+
+      // ✅ Start polling before upload completes
+      pollProgress();
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/upload", true);
+
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          pollProgress();  // ✅ Continue as normal
+        } else {
+          alert("Upload failed.");
+        }
+      };
+
+      xhr.send(formData);
+    });
+
+
+    function pollProgress() {
+      const interval = setInterval(async () => {
+        const res = await fetch(`/api/progress/`);
+        const value = await res.json();
+        
+        percantage.textContent = `${Math.round(value)}%`;
+        progress.value = value;
+
+        if (value >= 100) {
+          clearInterval(interval);
+
+          // ✅ Wait a bit for FFmpeg to finish encoding and writing file
+          setTimeout(() => {
+            progressBar.hidden = true;
+            fetchItems();
+          }, 1500);  // wait 1.5 seconds
+        }
+      }, 500);
+    }
+
+
+    async function fetchItems() {
+      const res = await fetch(apiUrl);
+      const items = await res.json();
+      const list = document.getElementById('item-list');
+      list.innerHTML = '';
+
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+          <strong>Video ID:</strong> ${item.id}<br>
+          <video width="720" height="480" controls>
+            <source src="${item.output_path}" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+          <br>
+          <button onclick="deleteItem(${item.id})">Delete</button>
+          <hr>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    async function deleteItem(id) {
+      await fetch(apiUrl + id, { method: 'DELETE' });
+      fetchItems();
+    }
+
+    // Load items on page load
+    fetchItems();
+  </script>
+</body>
+</html>
