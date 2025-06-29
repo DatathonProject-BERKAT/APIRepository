@@ -9,6 +9,7 @@ from typing import List,Dict
 import shutil
 import threading
 import os
+import cv2
 from datetime import datetime
 
 app = FastAPI()
@@ -69,11 +70,33 @@ async def upload_file(
 def is_file_exist(file_name: str):
     folder_path = os.path.join(os.path.dirname(__file__), "static", "outputs")
     file_path = os.path.join(folder_path, file_name)
-    print(file_path)
-    return os.path.isfile(file_path)
+    
+    return os.path.isfile(file_path) and is_video_playable(file_path)
 
 @app.get("/api/items/", response_model=List[Item])
 def get_all_items():
+    allFile = get_all_file_paths("static/outputs")
+    items.clear()
+    vidIDSet = set()
+    for i in allFile:
+        fileSplit = i.split("_")
+        fileName = fileSplit[1]
+        fileID = fileName.split(".")[0]
+        vidIDSet.add(fileID)
+    
+    allItemsID = list({i.id for i in items})
+    
+    for i in vidIDSet:
+        if i not in allItemsID:
+            item = Item(
+                id=int(i),  # assumes filename is timestamp.ext
+                video_path=f"/static/{i}.mp4",
+                output_path=f"/static/outputs/processed_{i}.mp4"
+            )
+            items.append(item)
+    
+    print(items)
+    
     return items
 
 @app.get("/api/progress/", response_model=Dict[str, int])
@@ -88,9 +111,33 @@ def delete_item(item_id: int):
             # Delete the image file
             if os.path.exists(item.output_path.strip("/")):
                 os.remove(item.output_path.strip("/"))
-                os.remove(f"/static/outputs/raw_{item.id}.mp4".strip("/"))
+                os.remove(f"/static/outputs/raw_{item.id}.avi".strip("/"))
                 os.remove(f"/uploads/{item.id}.mp4".strip("/"))
             # Remove item
-            del items[i]
+            items.pop(i)
             return {"message": "Item deleted"}
     raise HTTPException(status_code=404, detail="Item not found")
+
+def get_all_file_paths(folder_path):
+        file_paths = []
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                full_path = os.path.join(root, file)
+                file_paths.append(full_path)
+        return file_paths
+    
+def is_video_playable(path):
+    cap = cv2.VideoCapture(path)
+    
+    if not cap.isOpened():
+        print("Failed to open video")
+        return False
+
+    ret, frame = cap.read()
+    cap.release()
+
+    if not ret or frame is None:
+        print("Video opened but could not read frames")
+        return False
+
+    return True

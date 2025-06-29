@@ -4,7 +4,9 @@ class CNN_Model:
         import subprocess
         import cv2
         import os
+        import time
         import torch
+        self.time = time
         self.torch = torch
         self.model = YOLO("yolo11n.pt")
         if (self.torch.cuda.is_available()):
@@ -28,7 +30,7 @@ class CNN_Model:
         base_filename = self.os.path.basename(vidPath)
         filename =  self.os.path.splitext(base_filename)[0]
         
-        raw_output_path = self.os.path.join(output_folder, f"raw_{base_filename}")
+        raw_output_path = self.os.path.join(output_folder, f"raw_{filename}.avi")
         final_output_path = self.os.path.join(output_folder, f"processed_{base_filename}")
 
         
@@ -56,26 +58,28 @@ class CNN_Model:
             
             # 1 frame is processed
             self.progress[filename] = (counter/total_frames)*100
-            if (self.progress[filename] < 98):
+            if (self.progress[filename] < 99):
                 counter += 1
                 
         cap.release()
         out.release()
-
+        self.time.sleep(1)
         # Re-encode for browser compatibility
+        self.progress[filename] = 303 # encoding
         self.subprocess.run([
             "ffmpeg",
-            "-y",                      # Overwrite if exists
+            "-y",
             "-i", raw_output_path,
             "-vcodec", "libx264",
-            "-pix_fmt", "yuv420p",     # Ensures compatibility with browsers
+            "-pix_fmt", "yuv420p",
             final_output_path
-        ])
+        ], stdout=self.subprocess.PIPE, stderr=self.subprocess.PIPE)
         print(f"Final re-encoded video saved to: {final_output_path}")
         self.progress[filename] = 100
+        print(self.progress[filename])
         # return f"/static/outputs/processed_{base_filename}"
 
-
+    
 
 
 if __name__ == "__main__":

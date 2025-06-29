@@ -5,6 +5,33 @@
   <title>Butterscotch</title>
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 </head>
+<style>
+    .progress {
+    position: relative;
+    width: 210px;
+    height: 30px;
+    background: #9cbab4;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  .progress__fill {
+    width: 0%;
+    height: 100%;
+    background: #009579;
+    transition: all 0.2s;
+  }
+
+  .progress__text {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+    font: bold 14px "Quicksand", sans-serif;
+    color: #ffffff;
+  }
+
+</style>
 <body>
   <div>
     <form id="uploadForm" enctype="multipart/form-data">
@@ -14,9 +41,10 @@
     </form>
   </div>
   <div id = "progress_bar">
-    <img width = "5%"  src="static/decoration/spinner.gif">
-    <p id="percantage">0%</p>
-    <progress id = "progress" value="0" max="100"></progress>
+    <div class="progress">
+      <div class="progress__fill"></div>
+      <span class="progress__text">0%</span>
+    </div>
   </div>
 
   <div id="item-list"></div>
@@ -29,6 +57,8 @@
     const uploadForm = document.getElementById("uploadForm");
     const videoInput = document.getElementById("videoInput");
     const button = document.getElementById("uploadButton");
+    const myProgressBar = document.querySelector(".progress");
+    
 
     // fix this so that the loading percantage isnt going back to 0 when refreshed
     window.onload = async () => {
@@ -40,14 +70,12 @@
         )
         if (inProgressId) {
           progressBar.hidden = false;
-          progress.value = progressData[inProgressId];
-          percantage.textContent = `${Math.round(progressData[inProgressId])}%`;
+          updateProgressBar(myProgressBar, Math.round(progressData[inProgressId]));
           button.disabled = true;
           pollProgress(inProgressId);
         } else {
           progressBar.hidden = true;
-          percantage.textContent = "0%";
-          progress.value = 0;
+          updateProgressBar(myProgressBar, 0);
           button.disabled = false;
         }
       } catch (err) {
@@ -72,7 +100,7 @@
       const formData = new FormData();
       formData.append("video", renamedFile);  // ✅ send renamed file
 
-      progress.value = 0;
+      updateProgressBar(myProgressBar, 0);
       progressBar.hidden = false;
 
       pollProgress(timestamp);
@@ -109,23 +137,24 @@
         const value = await res.json();
         
         if (isNaN(value[vidID])){
-          percantage.textContent = `Processing...`;
+          updateProgressBar(myProgressBar, -1);
         }else{
-          if (value[vidID] >= 98){
-            percantage.textContent = `Encoding...`;
+          if (value[vidID] == 303){
+            updateProgressBar(myProgressBar, 303);
           }else{
-            percantage.textContent = `${Math.round(value[vidID])}%`;
+            updateProgressBar(myProgressBar, Math.round(value[vidID]));
           }
         }
-        progress.value = value[vidID];
+        // progress.value = value[vidID];
+        updateProgressBar(myProgressBar, Math.round(value[vidID]));
 
-        if (value[vidID] >= 100) {
+        if (value[vidID] == 100) {
           clearInterval(interval);
 
           // ✅ Wait a bit for FFmpeg to finish encoding and writing file
           setTimeout(() => {
             progressBar.hidden = true;
-            progress.value = 0;
+            updateProgressBar(myProgressBar, 0);
             button.disabled = false;
             isLoading = false;
             fetchItems();
@@ -199,6 +228,18 @@
       await fetch(apiUrl + id, { method: 'DELETE' });
       fetchItems();
     }
+
+    function updateProgressBar(progressBar, value) {
+      if (value == 303){
+        progressBar.querySelector(".progress__text").textContent = "Encoding...";
+        progressBar.querySelector(".progress__fill").style.width = "99%";
+      }else{
+        progressBar.querySelector(".progress__text").textContent = `${value}%`;
+        progressBar.querySelector(".progress__fill").style.width = `${value}%`;
+      }
+    }
+
+    
 
     // Load items on page load
     fetchItems();
