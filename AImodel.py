@@ -12,28 +12,10 @@ class CNN_Model:
         self.subprocess = subprocess
         self.os = os
         self.cv2 = cv2
-        self.progress = 0
-    
-    def predict(self,imgPath):
-        img = self.cv2.imread(imgPath)
-
-        result = self.model(img)
-
-        annotated_img = result[0].plot()
-
-        self.os.makedirs("imageFolder", exist_ok=True)
-
-        # Extract filename from imgPath
-        filename = self.os.path.basename(imgPath)
-    
-        save_path = self.os.path.join("imageFolder", filename)
-
-        # Save the image
-        self.cv2.imwrite(save_path, annotated_img)
-        return {"result":result,"outputPath":save_path}
+        self.progress = {}
     
     def process_video(self, vidPath):
-
+        
         cap = self.cv2.VideoCapture(vidPath)
         if not cap.isOpened():
             raise ValueError(f"Could not open video file: {vidPath}")
@@ -44,8 +26,12 @@ class CNN_Model:
         self.os.makedirs(output_folder, exist_ok=True)
 
         base_filename = self.os.path.basename(vidPath)
+        filename =  self.os.path.splitext(base_filename)[0]
+        
         raw_output_path = self.os.path.join(output_folder, f"raw_{base_filename}")
         final_output_path = self.os.path.join(output_folder, f"processed_{base_filename}")
+
+        
 
         fourcc = self.cv2.VideoWriter_fourcc(*'mp4v')
         out = self.cv2.VideoWriter(
@@ -55,7 +41,10 @@ class CNN_Model:
             (int(cap.get(self.cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(self.cv2.CAP_PROP_FRAME_HEIGHT)))
         )
 
-        self.progress = 0
+        
+        if (filename not in self.progress):
+            self.progress.update({filename : 0})
+            
         counter = 1
         while cap.isOpened():
             ret, frame = cap.read()
@@ -66,27 +55,25 @@ class CNN_Model:
             out.write(annotated_frame)
             
             # 1 frame is processed
-            self.progress = (counter/total_frames)*100
-            counter += 1
-            
+            self.progress[filename] = (counter/total_frames)*100
+            if (self.progress[filename] < 98):
+                counter += 1
+                
         cap.release()
         out.release()
 
         # Re-encode for browser compatibility
         self.subprocess.run([
             "ffmpeg",
-            "-y",
+            "-y",                      # Overwrite if exists
             "-i", raw_output_path,
             "-vcodec", "libx264",
-            "-pix_fmt", "yuv420p",
-            "-movflags", "+faststart",
-            "-c:a", "aac",
+            "-pix_fmt", "yuv420p",     # Ensures compatibility with browsers
             final_output_path
         ])
-
-
         print(f"Final re-encoded video saved to: {final_output_path}")
-        return final_output_path
+        self.progress[filename] = 100
+        # return f"/static/outputs/processed_{base_filename}"
 
 
 
