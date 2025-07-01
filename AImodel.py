@@ -8,7 +8,8 @@ class CNN_Model:
         import torch
         self.time = time
         self.torch = torch
-        self.model = YOLO("yolo11n.pt")
+        # self.model = YOLO("yolo11n.pt")
+        self.model = YOLO("miceDetectorModel.pt")
         if (self.torch.cuda.is_available()):
             self.model.to("cuda")
         self.subprocess = subprocess
@@ -28,7 +29,7 @@ class CNN_Model:
         self.os.makedirs(output_folder, exist_ok=True)
 
         base_filename = self.os.path.basename(vidPath)
-        filename =  self.os.path.splitext(base_filename)[0]
+        filename = self.os.path.splitext(base_filename)[0]
         
         raw_output_path = self.os.path.join(output_folder, f"raw_{filename}.avi")
         final_output_path = self.os.path.join(output_folder, f"processed_{base_filename}")
@@ -44,21 +45,46 @@ class CNN_Model:
         )
 
         
-        if (filename not in self.progress):
-            self.progress.update({filename : 0})
+        if filename not in self.progress:
+            self.progress.update({filename: 0})
             
         counter = 1
+        trail_points = []
+        brightness_offset = 50  # you can change this to any value or make it a parameter
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            results = self.model(frame)
-            annotated_frame = results[0].plot()
-            out.write(annotated_frame)
             
-            # 1 frame is processed
-            self.progress[filename] = (counter/total_frames)*100
-            if (self.progress[filename] < 99):
+            # Apply brightness adjustment before model
+            frame = self.cv2.convertScaleAbs(frame, alpha=1.0, beta=brightness_offset)
+            # Run inference on brightened frame
+            results = self.model(frame)[0]
+            
+            if len(results.boxes) > 0:
+                # Select the box with the highest confidence
+                best_box_idx = results.boxes.conf.argmax()
+                box = results.boxes[best_box_idx]
+
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                cx = (x1 + x2) // 2
+                cy = (y1 + y2) // 2
+
+                # Draw bounding box
+                self.cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+                # Save center point to trail
+                trail_points.append((cx, cy))
+
+            # Draw the trail
+            for point in trail_points:
+                self.cv2.circle(frame, point, radius=3, color=(0, 255, 0), thickness=-1)
+
+            out.write(frame)
+
+            # Update progress
+            self.progress[filename] = (counter / total_frames) * 100
+            if self.progress[filename] < 99:
                 counter += 1
                 
         cap.release()

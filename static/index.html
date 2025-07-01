@@ -4,41 +4,62 @@
   <meta charset="UTF-8">
   <title>Butterscotch</title>
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="static/style.css">
 </head>
-<style>
-    .progress {
-    position: relative;
-    width: 210px;
-    height: 30px;
-    background: #9cbab4;
-    border-radius: 5px;
-    overflow: hidden;
-  }
 
-  .progress__fill {
-    width: 0%;
-    height: 100%;
-    background: #009579;
-    transition: all 0.2s;
-  }
-
-  .progress__text {
-    position: absolute;
-    top: 50%;
-    right: 5px;
-    transform: translateY(-50%);
-    font: bold 14px "Quicksand", sans-serif;
-    color: #ffffff;
-  }
-
-</style>
 <body>
-  <div>
-    <form id="uploadForm" enctype="multipart/form-data">
+  <header>
+    <h1>Behavioral Maze Analyzer</h1>
+  </header>
+
+  <nav>
+    <a href="#" class="active" onclick="showSection('mwm')">Morris Water Maze</a>
+    <a href="#" onclick="showSection('radial')">Radial Arm Maze</a>
+    <a href="#" onclick="showSection('about')">About</a>
+  </nav>
+
+  <div id="mwm-section" class="container">
+    <div class="section">
+      <h3>What is the Morris Water Maze?</h3>
+      <p>
+        The Morris Water Maze is a behavioral neuroscience test used to study spatial learning and memory in rodents.
+        A rat is placed in a circular pool to find a hidden platform beneath the water surface. Over trials, its navigation ability reflects memory formation.
+      </p>
+    </div>
+    <div id="form-area-mwm"></div>
+  </div>
+
+  <div id="radial-section" class="container hidden">
+    <div class="section">
+      <h3>What is the Radial Arm Maze?</h3>
+      <p>
+        The Radial Arm Maze is used to assess spatial learning and memory. It consists of a center platform with multiple arms radiating outward, some baited with food.
+        The rat's ability to remember which arms it has visited is a measure of working memory.
+      </p>
+    </div>
+    <div id="form-area-radial"></div>
+  </div>
+
+  <div id="about-section" class="container hidden">
+    <div class="section">
+      <h3>About</h3>
+      <p>
+        This analyzer processes rodent behavioral experiment videos using AI-powered tracking (YOLO). It supports Morris Water Maze and Radial Arm Maze tasks, running on a FastAPI backend.
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
+      <form id="uploadForm" enctype="multipart/form-data">
+      <h2>Experiment Metadata</h2>
+      <label>Experiment Name:</label><input type="text" name="experiment_name">
+      <label>Trial Day:</label><input type="number" name="day" min="1">
+      <label>Basin Diameter (cm):</label><input type="number" name="diameter">
+      <label>Rat Length (cm):</label><input type="number" name="rat_length">
+      <label>Upload Experiment Video:</label>
       <input type="file" id="videoInput" name="video" accept="video/mp4,video/webm" required>
-      <br><br>
       <button id="uploadButton" type="submit">Upload Video</button>  
-    </form>
+      </form>
   </div>
   <div id = "progress_bar">
     <div class="progress">
@@ -49,7 +70,7 @@
 
   <div id="item-list"></div>
 
-  <script>
+  <script> 
     const progressBar = document.getElementById("progress_bar");
     const progress = document.getElementById("progress");
     const percantage = document.getElementById("percantage");
@@ -59,15 +80,27 @@
     const button = document.getElementById("uploadButton");
     const myProgressBar = document.querySelector(".progress");
     
+    function showSection(name) {
+      const sections = {
+        mwm: document.getElementById('mwm-section'),
+        radial: document.getElementById('radial-section'),
+        about: document.getElementById('about-section')
+      };
+      for (let key in sections) sections[key].classList.add("hidden");
+      sections[name].classList.remove("hidden");
 
-    // fix this so that the loading percantage isnt going back to 0 when refreshed
-    window.onload = async () => {
-      try {
-        const res = await fetch(`/api/progress/`);
-        const progressData = await res.json(); // { "270625083022": 64.5, ... 
-        const inProgressId = Object.keys(progressData).find(
-          id => progressData[id] > 0 && progressData[id] < 100
-        )
+      document.querySelectorAll("nav a").forEach(a => a.classList.remove("active"));
+      document.querySelector(`nav a[onclick*="${name}"]`).classList.add("active");
+    }
+
+      // fix this so that the loading percantage isnt going back to 0 when refreshed
+      window.onload = async () => {
+        try {
+          const res = await fetch(`/api/progress/`);
+          const progressData = await res.json(); // { "270625083022": 64.5, ... 
+          const inProgressId = Object.keys(progressData).find(
+            id => (progressData[id] > 0 && progressData[id] < 100) || progressData[id] == 303
+            )
         if (inProgressId) {
           progressBar.hidden = false;
           updateProgressBar(myProgressBar, Math.round(progressData[inProgressId]));
