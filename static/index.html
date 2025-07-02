@@ -68,7 +68,13 @@
     </div>
   </div>
 
-  <div id="item-list"></div>
+  <div class="section">
+    <div class="result">
+      <h2>Result</h2>
+      <!-- <div class="analysis-output"></div> -->
+      <div id="item-list"></div>
+    </div>
+  </div>
 
   <script> 
     const progressBar = document.getElementById("progress_bar");
@@ -111,6 +117,7 @@
           updateProgressBar(myProgressBar, 0);
           button.disabled = false;
         }
+        // fetchItems()
       } catch (err) {
         console.error("Error getting progress:", err);
       }
@@ -202,30 +209,36 @@
       const items = await res.json();
       const list = document.getElementById('item-list');
       list.innerHTML = '';
+      
+      console.log(Object.keys(items).length);
+      console.log("<->");
+      
+      if (Object.keys(items).length > 0){
 
-      const displayedIds = new Set();
-
-      for (const item of items) {
-        if (displayedIds.has(item.id)) continue;
-        displayedIds.add(item.id);
-
-        const div = document.createElement('div');
-        const exists = await checkFileExistence(`processed_${item.id}.mp4`);
-        if (exists) {
-          div.innerHTML = `
-            <strong>Video ID:</strong> ${item.id}<br>
-            <video width="720" height="480" controls>
-              <source src="${item.output_path}" type="video/mp4">
-              Your browser does not support the video tag.
-            </video>
-            <br>
-            <button onclick="deleteItem(${item.id})">Delete</button>
-            <hr>
-          `;
-          list.appendChild(div);
+        for (const item of items) {
+          const div = document.createElement('div');
+          const exists = await checkFileExistence(`processed_${item.id}.mp4`);
+          if (exists) {
+            div.innerHTML = `
+              <strong>Video ID:</strong> ${item.id}<br>
+              <video width="720" height="480" controls>
+                <source src="${item.output_path}" type="video/mp4">
+                Your browser does not support the video tag.
+              </video>
+              <br>
+              <button onclick="deleteItem(${item.id})">Delete</button>
+              <hr>
+            `;
+            list.appendChild(div);
+          }
         }
+      }else{
+        const div = document.createElement('div');
+        div.innerHTML = "No Result Found!";
+        list.appendChild(div);
       }
     }
+    
 
     async function waitUntilFileExists(fileName, interval = 500) {
       while (true) {
@@ -271,8 +284,6 @@
         progressBar.querySelector(".progress__fill").style.width = `${value}%`;
       }
     }
-
-    
 
     // Load items on page load
     fetchItems();

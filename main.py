@@ -82,8 +82,10 @@ def get_all_items():
         fileSplit = i.split("_")
         fileName = fileSplit[1]
         fileID = fileName.split(".")[0]
-        vidIDSet.add(fileID)
-    
+        if (fileSplit[0].split("\\")[1] == "processed"):
+            vidIDSet.add(fileID)
+            
+    print(vidIDSet)
     allItemsID = list({i.id for i in items})
     
     for i in vidIDSet:
@@ -94,7 +96,6 @@ def get_all_items():
                 output_path=f"/static/outputs/processed_{i}.mp4"
             )
             items.append(item)
-    
     print(items)
     
     return items
