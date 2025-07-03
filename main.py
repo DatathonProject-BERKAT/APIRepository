@@ -112,6 +112,7 @@ def delete_item(item_id: int):
             # Delete the image file
             if os.path.exists(item.output_path.strip("/")):
                 os.remove(item.output_path.strip("/"))
+                os.remove(f"/static/outputs/trajectory_{item.id}.jpg".strip("/"))
                 os.remove(f"/static/outputs/raw_{item.id}.avi".strip("/"))
                 os.remove(f"/uploads/{item.id}.mp4".strip("/"))
             # Remove item

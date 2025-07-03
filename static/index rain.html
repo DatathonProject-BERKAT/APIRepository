@@ -255,12 +255,12 @@
             </div>
 
 
-        <div class="section">
-          <div class="result">
-            <h2>Result</h2>
-            <div class="analysis-output"></div>
+          <div class="section">
+            <div class="result">
+              <h2>Result</h2>
+              <div class="analysis-output"></div>
+            </div>
           </div>
-        </div>
         `;
 
 
@@ -372,21 +372,6 @@
             <h3>Timer</h3>
             <div class="timer">Timer not available (backend extension needed)</div>
           `;
-
-          block.innerHTML = `
-          <h3>Processed Video</h3>
-          <video controls>
-            <source src="${item.output_path}" type="video/mp4">
-          </video>
-
-          <h3>\Trajectory</h3>
-          <img src="/static/outputs/trajectory_${item.id}.png" alt="Trajectory Image">
-          <p><strong>Trajectory length:</strong> belum</p>
-
-          <h3>Timer</h3>
-          <div class="timer">Start: -- s — End: -- s<br>Total: Tbelum (backend extension needed)</div>
-        `;
-
           outputTarget.appendChild(block);
         }
       }

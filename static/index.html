@@ -210,25 +210,29 @@
       const list = document.getElementById('item-list');
       list.innerHTML = '';
       
-      console.log(Object.keys(items).length);
-      console.log("<->");
-      
       if (Object.keys(items).length > 0){
 
         for (const item of items) {
           const div = document.createElement('div');
           const exists = await checkFileExistence(`processed_${item.id}.mp4`);
           if (exists) {
+            div.className = "result-block";
             div.innerHTML = `
               <strong>Video ID:</strong> ${item.id}<br>
-              <video width="720" height="480" controls>
+              <h3>Processed Video</h3>
+              <video controls>
                 <source src="${item.output_path}" type="video/mp4">
-                Your browser does not support the video tag.
               </video>
               <br>
+              <h3>Trajectory</h3>
+              <img src="/static/outputs/trajectory_${item.id}.jpg" alt="Trajectory Image">
+              <p>Trajectory length:</p>
+              <br>
+              <h3>Timer</h3>
+              <div class="timer">Timer not available (backend extension needed)</div>
               <button onclick="deleteItem(${item.id})">Delete</button>
-              <hr>
             `;
+            
             list.appendChild(div);
           }
         }
@@ -276,7 +280,10 @@
     }
 
     function updateProgressBar(progressBar, value) {
-      if (value == 303){
+      if (isNaN(value)){
+        progressBar.querySelector(".progress__text").textContent = "Processing...";
+      }
+      else if (value == 303){
         progressBar.querySelector(".progress__text").textContent = "Encoding...";
         progressBar.querySelector(".progress__fill").style.width = "99%";
       }else{
