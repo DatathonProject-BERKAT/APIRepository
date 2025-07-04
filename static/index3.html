@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Radial Arm Maze Analyzer</title>
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f3f7f9;
+      color: #333;
+    }
+
+    header {
+      background: #2b6777;
+      color: white;
+      padding: 16px;
+      text-align: center;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      background-color: #2b6777;
+    }
+
+    nav a {
+      color: white;
+      padding: 12px 20px;
+      text-decoration: none;
+      font-weight: bold;
+      margin-left: 4px;
+      margin-right: 4px;
+    }
+
+    nav a:hover,
+    nav a.active {
+      background-color: #f3f7f9;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+      color: #2b6777;
+    }
+
+    .container {
+      padding: 20px;
+      height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+
+    .section {
+      background: #ffffff;
+      padding: 20px;
+      max-width: 700px;
+      margin: 20px auto;
+      border-radius: 8px;
+    }
+
+    form {
+      background: #ffffff;
+      padding: 20px;
+      max-width: 700px;
+      margin: 20px auto;
+      border-radius: 8px;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 12px 20px;
+      background-color: #2b6777;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #1e4c57;
+    }
+
+    .progress {
+      position: relative;
+      width: 100%;
+      height: 25px;
+      background: #e0e0e0;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 20px auto;
+      max-width: 700px;
+    }
+
+    .progress__fill {
+      width: 0%;
+      height: 100%;
+      background: #52ab98;
+      transition: width 0.3s;
+    }
+
+    .progress__text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .result-block {
+      background: #ffffff;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
+
+    .preview {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .preview img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    .maze_container {
+        text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Radial Arm Maze Analyzer</h1>
+  </header>
+  <nav>
+    <a href="#" class="active" onclick="showPage('analyzer')">Analyzer</a>
+    <a href="#" onclick="showPage('calculator')">Calculator</a>
+    <a href="#" onclick="showPage('about')">About</a>
+  </nav>
+
+  <div id="analyzer-page" class="container">
+    <div class="section">
+      <h2>Upload Radial Arm Maze Data</h2>
+      <form id="uploadForm" enctype="multipart/form-data">
+        <section class="form_parts">
+            <h3>Test Animal Metadata</h3>
+            <label>Test Animal Type:</label>
+            <input type="text" name="animal_type">
+            <label>Age (weeks):</label>
+            <input type="number" name="age">
+            <label>Weight (grams):</label>
+            <input type="number" name="weight">
+        </section>
+        <section class="form_parts">
+            <h3>File Uploads</h3>
+            <label>Upload Video or Folder:</label>
+            <input type="file" name="video_folder" id="video_folder" multiple required>
+        </section>
+        <section class="form_parts">
+            <h3>Maze Configurations</h3>
+            <label>Total arms</label>
+            <input type="number" name="total_arms" id="total_arms" value=8>
+            <label>Click to configurate maze</label>
+            <section>
+                <label>Arm 1 Click</label>
+                <label>Arm 2 Click</label>
+                <label>Arm 1 Click</label>
+            </section>
+            <div class="maze_container">
+                <canvas id="radialMaze" width="500" height="500"></canvas>
+            </div>
+        </section>
+        <button type="submit">Upload & Analyze</button>
+      </form>
+    </div>
+    <div class="preview" id="preview"></div>
+    <div class="progress">
+      <div class="progress__fill"></div>
+      <span class="progress__text">0%</span>
+    </div>
+    <div class="section">
+      <h2>Results</h2>
+      <div id="results"></div>
+    </div>
+  </div>
+
+  <div id="calculator-page" class="container" style="display:none">
+    <div class="section">
+      <h2>Maze Calculator</h2>
+      <p>Coming soon...</p>
+    </div>
+  </div>
+
+  <div id="about-page" class="container" style="display:none">
+    <div class="section">
+      <h2>About</h2>
+      <p>This platform analyzes behavioral maze experiments in rodents using computer vision and AI, powered by FastAPI and YOLO. It supports batch uploads for Radial Arm Maze tasks.</p>
+    </div>
+  </div>
+
+  <script>
+    // ganti page
+    function showPage(pageId) {
+      document.getElementById('analyzer-page').style.display = 'none';
+      document.getElementById('calculator-page').style.display = 'none';
+      document.getElementById('about-page').style.display = 'none';
+      document.getElementById(pageId + '-page').style.display = 'block';
+      document.querySelectorAll("nav a").forEach(a => a.classList.remove("active"));
+      document.querySelector(`nav a[onclick*="${pageId}"]`).classList.add("active");
+    }
+
+    // cek input file
+    document.getElementById('video_folder').addEventListener('change', async function (e) {
+      const files = Array.from(e.target.files);
+      const previewDiv = document.getElementById('preview');
+      previewDiv.innerHTML = '';
+      let errorShown = false;
+
+      if (files.length === 1 && files[0].name.endsWith(".mp4")) {
+        const videoURL = URL.createObjectURL(files[0]);
+        const video = document.createElement('video');
+        video.src = videoURL;
+        video.muted = true;
+        video.playsInline = true;
+        video.addEventListener('loadedmetadata', () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          video.currentTime = video.duration / 2;
+
+          video.addEventListener('seeked', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imgURL = canvas.toDataURL();
+            previewDiv.innerHTML = `<h3>Video Preview</h3><img src="${imgURL}" alt="Video Snapshot">`;
+          }, { once: true });
+        });
+        return;
+      }
+
+      // ini cek kalo folder
+      const folders = {};
+      for (const file of files) {
+        const parts = file.webkitRelativePath ? file.webkitRelativePath.split("/") : ["", file.name];
+        if (parts.length < 2) continue;
+        const folderName = parts[1];
+        if (!folders[folderName]) folders[folderName] = [];
+        folders[folderName].push(file);
+      }
+
+      for (const group of Object.values(folders)) {
+        for (const file of group) {
+          if (!file.name.endsWith(".mp4")) {
+            if (!errorShown) alert("All files in each folder must be .mp4");
+            errorShown = true;
+            e.target.value = "";
+            return;
+          }
+        }
+      }
+
+      const firstVideo = files.find(f => f.type.startsWith('video'));
+      if (!firstVideo) return;
+
+      const videoURL = URL.createObjectURL(firstVideo);
+      const video = document.createElement('video');
+      video.src = videoURL;
+      video.muted = true;
+      video.playsInline = true;
+      video.addEventListener('loadedmetadata', () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        video.currentTime = video.duration / 2;
+
+        video.addEventListener('seeked', () => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imgURL = canvas.toDataURL();
+          previewDiv.innerHTML = `<h3>Video Preview</h3><img src="${imgURL}" alt="Video Snapshot">`;
+        }, { once: true });
+      });
+    });
+
+    //gambar radial arm
+    const canvas = document.getElementById('radialMaze');
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    const armLength = 140;
+    const armWidth = 40;
+    const treatRadius = 10;
+    const blockSize = 16;
+
+    let numArms = parseInt(document.getElementById("total_arms").value, 10);
+    let arms = generateArms(numArms);
+
+    function generateArms(n) {
+        return Array.from({ length: n }, () => ({
+            state: 'none',
+            treat: false
+        }));
+    }
+
+    function drawMaze() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+
+            if (arms[i].state === 'trained') ctx.fillStyle = 'aqua';
+            else if (arms[i].state === 'blocked') ctx.fillStyle = 'red';
+            else ctx.fillStyle = 'white';
+
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.rect(-armWidth / 2, 0, armWidth, armLength);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, armLength - 15, treatRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = arms[i].treat ? 'gold' : 'white';
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // bikin tengahnya
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i - (Math.PI / numArms);
+            const x = cx + 50 * Math.cos(angle);
+            const y = cy + 50 * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+    }
+
+    function handleClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i;
+            const sin = Math.sin(-angle);
+            const cos = Math.cos(-angle);
+
+            const dx = mx - cx;
+            const dy = my - cy;
+
+            const rx = dx * cos - dy * sin;
+            const ry = dx * sin + dy * cos;
+
+            if (
+                rx > -armWidth / 2 &&
+                rx < armWidth / 2 &&
+                ry > 0 &&
+                ry < armLength
+            ) {
+                const tx = 0;
+                const ty = armLength - 15;
+                const dist = Math.hypot(rx - tx, ry - ty);
+                if (dist < treatRadius) {
+                    arms[i].treat = !arms[i].treat;
+                } else {
+                    const state = arms[i].state;
+                    arms[i].state = state === 'none' ? 'trained' :
+                                    state === 'trained' ? 'blocked' :
+                                    'none';
+                }
+                drawMaze();
+                break;
+            }
+        }
+    }
+
+    document.getElementById("total_arms").addEventListener("change", function () {
+        let newVal = parseInt(this.value, 10);
+        if (!newVal || newVal <= 0) {
+            newVal = 8;
+            this.value = newVal;
+        }
+
+        numArms = newVal;
+        arms = generateArms(numArms);
+        drawMaze();
+    });
+
+    canvas.addEventListener('click', handleClick);
+    drawMaze();
+
+  </script>
+</body>
+</html>
