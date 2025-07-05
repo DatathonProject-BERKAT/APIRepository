@@ -33,14 +33,16 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 items = []
 
 class Item(BaseModel):
-    id: int
-    batch_name : str
-    date:str
-    rat_length:float
-    rat_weight:float
-    video_path: str
-    trajectory_path:str
-    output_path: str
+    id : str
+    batch_name  : str
+    folder_name : str
+    file_name : str
+    date : str
+    rat_length : float
+    rat_weight : float
+    video_path : str
+    trajectory_path : str
+    output_path : str
 
 @app.get("/", response_class=FileResponse)
 def serve_index():
@@ -73,7 +75,7 @@ async def upload_folder(
             # model.process_video(full_path)
             threading.Thread(
                 target = model.process_video,
-                args=(full_path,f" ; {id} ; {folder} ;"),
+                args=(full_path,f"; {id} ; {batch_name} ; {folder} ;"),
                 daemon=True
             ).start()
     
@@ -113,28 +115,32 @@ def is_file_exist(file_name: str):
 
 @app.get("/api/items/", response_model=List[Item])
 def get_all_items():
+    items.clear()
     allFile = get_all_file_paths("static/outputs")
     items.clear()
-    vidIDSet = set()
+    
     for i in allFile:
         fileSplit = i.split("_")
-        fileName = fileSplit[1]
-        fileID = fileName.split(".")[0]
+        fileName = fileSplit[1].strip()
+        
+        fileNameSplit = fileName.split(";")
+        id = fileNameSplit[1].strip()
+        batchName = fileNameSplit[2].strip()
+        folderName = fileNameSplit[3].strip()
         if (fileSplit[0].split("\\")[1] == "processed"):
-            vidIDSet.add(fileID)
-            
-    print(vidIDSet)
-    allItemsID = list({i.id for i in items})
-    
-    for i in vidIDSet:
-        if i not in allItemsID:
             item = Item(
-                id=int(i),  # assumes filename is timestamp.ext
-                video_path=f"/static/{i}.mp4",
-                output_path=f"/static/outputs/processed_{i}.mp4"
-            )
+                    id = id,
+                    batch_name  = batchName,
+                    folder_name = folderName,
+                    file_name = fileNameSplit[4],
+                    date = "",
+                    rat_length = 0.0,
+                    rat_weight = 0.0,
+                    video_path = f"static/outputs/raw_{fileName}",
+                    trajectory_path = f"static/outputs/trajectory_{fileName.split(".")[0]}.jpg",
+                    output_path = f"static/outputs/processed_{fileName}"
+                )
             items.append(item)
-    print(items)
     
     return items
 

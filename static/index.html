@@ -33,9 +33,101 @@
     </form>
   </div>
 
-  <script>
-    let counter = 0;
+  <div id = "progress_bar">
+    <div class="progress">
+      <div class="progress__fill"></div>
+      <span class="progress__text">0%</span>
+    </div>
+  </div>
 
+  <div class="section">
+    <div class="result">
+      <h2>Result</h2>
+      <div id="item-list"></div>
+    </div>
+  </div>
+
+
+  <script>
+    const progressBar = document.getElementById("progress_bar");
+    const progress = document.getElementById("progress");
+    const percantage = document.getElementById("percantage");
+    const apiUrl = '/api/items/';
+    const uploadForm = document.getElementById("uploadForm");
+    const videoInput = document.getElementById("videoInput");
+    const button = document.getElementById("uploadButton");
+    const myProgressBar = document.querySelector(".progress");
+
+    function showSection(name) {
+      const sections = {
+        radial: document.getElementById('radial-section'),
+        about: document.getElementById('about-section')
+      };
+      for (let key in sections) sections[key].classList.add("hidden");
+      sections[name].classList.remove("hidden");
+
+      document.querySelectorAll("nav a").forEach(a => a.classList.remove("active"));
+      document.querySelector(`nav a[onclick*="${name}"]`).classList.add("active");
+    }
+
+    window.onload = async () => {
+        try {
+          const res = await fetch(`/api/progress/`);
+          const progressData = await res.json(); // { "270625083022": 64.5, ... 
+          const inProgressId = Object.keys(progressData).find(
+            id => (progressData[id] > 0 && progressData[id] < 100) || progressData[id] == 303
+            )
+          console.log(inProgressId)
+        if (inProgressId) {
+          progressBar.hidden = false;
+          updateProgressBar(myProgressBar, Math.round(progressData[inProgressId]));
+          button.disabled = true;
+          pollProgress(inProgressId);
+        } else {
+          progressBar.hidden = true;
+          updateProgressBar(myProgressBar, 0);
+          button.disabled = false;
+        }
+        fetchItems()
+      } catch (err) {
+        console.error("Error getting progress:", err);
+      }
+    };
+
+    function pollProgress(vidID) {
+      console.log(vidID)
+      const interval = setInterval(async () => {
+        const res = await fetch(`/api/progress/`);
+        const value = await res.json();
+        
+        if (isNaN(value[vidID])){
+          updateProgressBar(myProgressBar, -1);
+        }else{
+          if (value[vidID] == 303){
+            updateProgressBar(myProgressBar, 303);
+          }else{
+            updateProgressBar(myProgressBar, Math.round(value[vidID]));
+          }
+        }
+        // progress.value = value[vidID];
+        updateProgressBar(myProgressBar, Math.round(value[vidID]));
+
+        if (value[vidID] == 100) {
+          clearInterval(interval);
+
+          // ✅ Wait a bit for FFmpeg to finish encoding and writing file
+          setTimeout(() => {
+            progressBar.hidden = true;
+            updateProgressBar(myProgressBar, 0);
+            button.disabled = false;
+            isLoading = false;
+            fetchItems();
+          }, 1500);  // wait 1.5 seconds
+        }
+      }, 500);
+    }
+
+    let counter = 0;
     function addFolderInput() {
       const list = document.getElementById("folder_input");
       const div = document.createElement('div');
@@ -44,21 +136,25 @@
 
       div.innerHTML = `
         <label>Folder Name:</label>
-        <input type="text" name="folder_name_${counter}" placeholder="Name">
-        <input type="file" name="folder" webkitdirectory directory multiple>
+        <input type="text" name="folder_name_${counter}" placeholder="Name" required>
+        <input type="file" name="folder" webkitdirectory directory multiple required>
         <button type="button" style="background-color:#E62323; cursor:pointer; width:20%; margin:10px 1px;" onclick="deleteFolderInput('${id}')">Delete</button>
       `;
       list.appendChild(div);
       counter++;
     }
 
-    function deleteFolderInput(folderInputId) {
-      const folder = document.getElementById(folderInputId);
-      if (folder) folder.remove();
+    function deleteFolderInput(id){
+      container = document.getElementById(id);
+      container.remove();
     }
+
 
     document.getElementById("uploadForm").addEventListener("submit", async function (event) {
         event.preventDefault();
+
+        // isLoading = true;
+        button.disabled = true;
 
         const formData = new FormData();
         const folderInputs = document.querySelectorAll('input[type="file"][name="folder"]');
@@ -70,56 +166,162 @@
         const folderNameInput = input.parentElement.querySelector('input[type="text"]');
         const folderName = folderNameInput?.value || `folder_${index}`;
 
-        Array.from(input.files).forEach((file) => {
-            hasFiles = true;
-            const relativePath = file.webkitRelativePath.split('/').slice(1).join('/');
-            formData.append("videos", file, `${batchName}/${folderName}/${relativePath}`);
-        });
+        updateProgressBar(myProgressBar, 0);
+        progressBar.hidden = false;
         
+        Array.from(input.files).forEach((file) => {
+          hasFiles = true;
+          const relativePath = file.webkitRelativePath.split('/').slice(1).join('/');
+          fileName = relativePath;
+          formData.append("videos", file, `${batchName}/${folderName}/${relativePath}`);
+          console.log(relativePath.split(".")[0]+" <<<<")
+          pollProgress(relativePath.split(".")[0]);
+            
+        });
       });
 
 
-        if (!hasFiles) {
-            alert("Please select at least one folder.");
-            return;
+      if (!hasFiles) {
+          alert("Please select at least one folder.");
+          return;
+      }
+      // Metadata (batch_name, date, etc.)
+      ["batch_name", "day", "diameter", "rat_length"].forEach(name => {
+          const value = document.querySelector(`[name="${name}"]`)?.value;
+          if (value) formData.append(name, value);
+      });
+
+      try {
+          const res = await fetch("/upload", {
+          method: "POST",
+          body: formData,
+          });
+          if (res.ok) {
+              alert("upload success full")
+          } else {
+          }
+      } catch (error) {
+          console.error("Upload error:", error);
+          alert("Upload error. See console.");
+      }
+    });
+    
+      let isFetching = false;
+      async function fetchItems() {
+        const res = await fetch(apiUrl);
+        const items = await res.json();
+        const list = document.getElementById('item-list');
+        list.innerHTML = '';
+        
+        if (Object.keys(items).length > 0){
+          itemDictionary = {}
+          for (const item of items) {
+            if (!(item.batch_name in itemDictionary)){
+              itemDictionary[item.batch_name] = {};
+              console.log(item.folder_name) 
+            }
+          }
+          
+          for (key in itemDictionary){
+            for (item of items){
+              if (item.batch_name == key){
+                itemDictionary[item.batch_name][item.folder_name] = [];
+              }
+            }
+          }
+
+          for (item of items){
+            itemDictionary[item.batch_name][item.folder_name].push(item)
+          }
+          console.log(itemDictionary)
+          
+          for (batch in itemDictionary){
+            const div = document.createElement('div');
+            // const exists = await checkFileExistence(`processed_${output_path}.mp4`);
+            // if (exists) {
+            div.className = "result-block";
+            div.innerHTML = `<Strong>Batch: </Strong>: ${batch}`;
+            for (dir in itemDictionary[batch]){
+              const divDir = document.createElement('div');
+              divDir.innerHTML = `
+                &nbsp;&nbsp;<strong>Folder:</strong> ${dir}
+              `;
+
+              const btn = document.createElement("button");
+              btn.textContent = "Show Video";
+              btn.onclick = () => showVideoResult(divDir, itemDictionary[batch][dir],btn);
+
+              divDir.appendChild(btn);
+              div.appendChild(divDir)
+            }
+              list.appendChild(div);
+          }
+        }else{
+          const div = document.createElement('div');
+          div.innerHTML = "No Result Found!";
+          list.appendChild(div);
+        }
+      }
+
+      function showVideoResult(divDir, itemDictionary, button) {
+        // Check if already rendered
+        const existingVideos = divDir.querySelectorAll(".video-entry");
+
+        if (existingVideos.length > 0) {
+          // Remove them (hide)
+          existingVideos.forEach(div => div.remove());
+          button.textContent = "Show Video";
+          return;
         }
 
-        // Metadata (batch_name, date, etc.)
-        ["batch_name", "day", "diameter", "rat_length"].forEach(name => {
-            const value = document.querySelector(`[name="${name}"]`)?.value;
-            if (value) formData.append(name, value);
-        });
+        // Otherwise, render videos (show)
+        for (const file of itemDictionary) {
+          const divFile = document.createElement('div');
+          divFile.className = "video-entry";  // used for identification/removal
+          divFile.id = file.output_path;
 
-        try {
-            const res = await fetch("/upload", {
-            method: "POST",
-            body: formData,
-            });
+          divFile.innerHTML = `
+            <div>${file.id} | ${file.batch_name} | ${file.folder_name} | ${file.file_name}</div>
+            <video controls>
+              <source src="${file.output_path}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            <p>Trajectory:</p>
+            <img src="${file.trajectory_path}" alt="Not found">
+          `;
+          console.log(file.trajectory_path)
 
-            if (res.ok) {
-                alert("upload success full")
-            } else {
-
-            }
-        } catch (error) {
-            console.error("Upload error:", error);
-            alert("Upload error. See console.");
+          divDir.appendChild(divFile);
         }
-        });
 
-        function getTimestamp() {
-            const now = new Date();
-            const pad = (n) => String(n).padStart(2, '0');
+        button.textContent = "Hide Video";
+      }
 
-            const year = now.getFullYear();
-            const month = pad(now.getMonth() + 1);
-            const day = pad(now.getDate());
-            const hour = pad(now.getHours());
-            const minute = pad(now.getMinutes());
-            const second = pad(now.getSeconds());
+    
+    function getTimestamp() {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const year = now.getFullYear();
+        const month = pad(now.getMonth() + 1);
+        const day = pad(now.getDate());
+        const hour = pad(now.getHours());
+        const minute = pad(now.getMinutes());
+        const second = pad(now.getSeconds());
+        return `${year}${month}${day}${hour}${minute}${second}`;
+    }
 
-            return `${year}${month}${day}${hour}${minute}${second}`;
-            }
+    function updateProgressBar(progressBar, value) {
+      if (isNaN(value)){
+        progressBar.querySelector(".progress__text").textContent = "Processing...";
+      }
+      else if (value == 303){
+        progressBar.querySelector(".progress__text").textContent = "Encoding...";
+        progressBar.querySelector(".progress__fill").style.width = "99%";
+      }else{
+        progressBar.querySelector(".progress__text").textContent = `${value}%`;
+        progressBar.querySelector(".progress__fill").style.width = `${value}%`;
+      }
+    }
 
   </script>
 </body>
