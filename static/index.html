@@ -28,7 +28,6 @@
       <label>Upload Experiment Folders:</label>
       <button type="button" style="width:50px; margin:10px 1px;" onclick="addFolderInput()">+</button>
       <div id="folder_input"></div>
-
       <section class="form_parts">
           <h3>Maze Configurations</h3>
           <label>Total arms</label>
@@ -43,7 +42,7 @@
               <canvas id="radialMaze" width="500" height="500"></canvas>
           </div>
       </section>
-        
+
       <button id="uploadButton" type="submit">Upload Video</button>  
     </form>
   </div>
@@ -338,7 +337,8 @@
       }
     }
 
-        const canvas = document.getElementById('radialMaze');
+
+    const canvas = document.getElementById('radialMaze');
     const ctx = canvas.getContext('2d');
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
@@ -458,6 +458,7 @@
 
     canvas.addEventListener('click', handleClick);
     drawMaze();
+
   </script>
 </body>
 </html>

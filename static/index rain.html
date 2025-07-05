@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Behavioral Maze Analyzer</title>
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f3f7f9;
+      color: #333;
+    }
+
+    header {
+      background: #2b6777;
+      color: white;
+      padding: 16px;
+      text-align: center;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      background-color: #2b6777;
+    }
+
+    nav a {
+      color: white;
+      padding: 12px 20px;
+      text-decoration: none;
+      font-weight: bold;
+      margin-left: 4px;
+      margin-right: 4px;
+    }
+
+    nav a:hover,
+    nav a.active {
+      /* background-color: #52ab98;
+      background-image: linear-gradient(#52ab98,#52ab98, #fff); */
+      background-color: #f3f7f9;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+      color: #2b6777;
+    }
+
+    .container {
+      padding: 20px;
+      height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+
+    .section {
+      background: #ffffff;
+      padding: 20px;
+      max-width: 700px;
+      margin: 20px auto;
+      border-radius: 8px;
+    }
+
+    form {
+      background: #ffffff;
+      padding: 20px;
+      max-width: 700px;
+      margin: 20px auto;
+      border-radius: 8px;
+    }
+
+    .result{
+      padding: 20px;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 12px 20px;
+      background-color: #2b6777;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #1e4c57;
+    }
+
+    .progress {
+      position: relative;
+      width: 100%;
+      height: 25px;
+      background: #e0e0e0;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 20px auto;
+      max-width: 700px;
+      display: block;
+    }
+
+    .progress__fill {
+      width: 0%;
+      height: 100%;
+      background: #52ab98;
+      transition: width 0.3s;
+    }
+
+    .progress__text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: bold;
+      color: #fff;
+    }
+
+    video, img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    .result-block {
+      background: #ffffff;
+      padding: 20px;
+
+      border-radius: 8px;
+    }
+
+    .timer {
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #444;
+    }
+
+    a.download-link {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 8px 14px;
+      background-color: #52ab98;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+
+    a.download-link:hover {
+      background-color: #3c8779;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Behavioral Maze Analyzer</h1>
+</header>
+
+<nav>
+  <a href="#" class="active" onclick="showSection('mwm')">Morris Water Maze</a>
+  <a href="#" onclick="showSection('radial')">Radial Arm Maze</a>
+  <a href="#" onclick="showSection('about')">About</a>
+</nav>
+
+<div id="mwm-section" class="container">
+  <div class="section">
+    <h3>What is the Morris Water Maze?</h3>
+    <p>
+      The Morris Water Maze is a behavioral neuroscience test used to study spatial learning and memory in rodents.
+      A rat is placed in a circular pool to find a hidden platform beneath the water surface. Over trials, its navigation ability reflects memory formation.
+    </p>
+  </div>
+  <div id="form-area-mwm"></div>
+</div>
+
+<div id="radial-section" class="container hidden">
+  <div class="section">
+    <h3>What is the Radial Arm Maze?</h3>
+    <p>
+      The Radial Arm Maze is used to assess spatial learning and memory. It consists of a center platform with multiple arms radiating outward, some baited with food.
+      The rat's ability to remember which arms it has visited is a measure of working memory.
+    </p>
+  </div>
+  <div id="form-area-radial"></div>
+</div>
+
+<div id="about-section" class="container hidden">
+  <div class="section">
+    <h3>About</h3>
+    <p>
+      This analyzer processes rodent behavioral experiment videos using AI-powered tracking (YOLO). It supports Morris Water Maze and Radial Arm Maze tasks, running on a FastAPI backend.
+    </p>
+  </div>
+</div>
+
+<script>
+  function showSection(name) {
+    const sections = {
+      mwm: document.getElementById('mwm-section'),
+      radial: document.getElementById('radial-section'),
+      about: document.getElementById('about-section')
+    };
+    for (let key in sections) sections[key].classList.add("hidden");
+    sections[name].classList.remove("hidden");
+
+    document.querySelectorAll("nav a").forEach(a => a.classList.remove("active"));
+    document.querySelector(`nav a[onclick*="${name}"]`).classList.add("active");
+  }
+
+  function createUploadInterface(containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = `
+        <div class="section">
+            <form class="uploadForm" enctype="multipart/form-data">
+            <h2>Experiment Metadata</h2>
+            <label>Experiment Name:</label><input type="text" name="experiment_name">
+            <label>Trial Day:</label><input type="number" name="day" min="1">
+            <label>Basin Diameter (cm):</label><input type="number" name="diameter">
+            <label>Rat Length (cm):</label><input type="number" name="rat_length">
+            <label>Upload Experiment Video:</label>
+            <input type="file" class="videoInput" name="video" accept="video/mp4,video/webm" required>
+            <button type="submit">Upload & Analyze</button>
+            </form>
+        </div>
+
+
+            <div class="progress">
+            <div class="progress__fill"></div>
+            <span class="progress__text">0%</span>
+            </div>
+
+
+          <div class="section">
+            <div class="result">
+              <h2>Result</h2>
+              <div class="analysis-output"></div>
+            </div>
+          </div>
+        `;
+
+
+
+    const form = container.querySelector(".uploadForm");
+    const input = container.querySelector(".videoInput");
+    const progressBar = container.querySelector(".progress");
+    const progressFill = container.querySelector(".progress__fill");
+    const progressText = container.querySelector(".progress__text");
+    const outputDiv = container.querySelector(".analysis-output");
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const file = input.files[0];
+      if (!file) return alert("Please select a video");
+
+      const timestamp = new Date().toISOString().replace(/\D/g, '').slice(0, 12);
+      const renamedFile = new File([file], `${timestamp}.${file.name.split('.').pop()}`, {type: file.type});
+
+      const formData = new FormData();
+      formData.append("video", renamedFile);
+      for (const element of form.elements) {
+        if (element.name && element.type !== "file") {
+          formData.append(element.name, element.value);
+        }
+      }
+
+      updateProgressBar(0);
+      progressBar.style.display = "block";
+      pollProgress(timestamp);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/upload", true);
+      xhr.onload = async function () {
+        if (xhr.status === 200 || xhr.status === 303) {
+          const fileReady = await waitUntilFileExists(`processed_${timestamp}.mp4`);
+          if (fileReady) await fetchItems(outputDiv);
+          progressBar.style.display = "none";
+        } else {
+          alert("Upload failed.");
+          progressBar.style.display = "none";
+        }
+      };
+      xhr.send(formData);
+
+      function pollProgress(id) {
+        const interval = setInterval(async () => {
+          const res = await fetch(`/api/progress/`);
+          const data = await res.json();
+          const percent = Math.round(data[id] || 0);
+
+          if (percent === 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              progressBar.style.display = "none";
+              updateProgressBar(0);
+              fetchItems(outputDiv);
+            }, 1500);
+          } else {
+            updateProgressBar(percent);
+          }
+        }, 500);
+      }
+
+      function updateProgressBar(value) {
+        if (value === 303) {
+          progressText.textContent = "Encoding...";
+          progressFill.style.width = "99%";
+        } else {
+          progressText.textContent = `${value}%`;
+          progressFill.style.width = `${value}%`;
+        }
+      }
+
+      async function waitUntilFileExists(name, interval = 500) {
+        while (true) {
+          const exists = await checkFileExistence(name);
+          if (exists) return true;
+          await new Promise(res => setTimeout(res, interval));
+        }
+      }
+
+      async function checkFileExistence(name) {
+        const res = await fetch(`/api/isFileExist?file_name=${encodeURIComponent(name)}`);
+        return res.ok ? await res.json() : false;
+      }
+
+      async function fetchItems(outputTarget) {
+        const res = await fetch('/api/items/');
+        const items = await res.json();
+        outputTarget.innerHTML = '';
+        for (const item of items) {
+          const exists = await checkFileExistence(`processed_${item.id}.mp4`);
+          if (!exists) continue;
+
+          const block = document.createElement('div');
+          block.className = "result-block";
+          block.innerHTML = `
+            <strong>Video ID:</strong> ${item.id}<br>
+            <h3>Processed Video</h3>
+            <video controls>
+              <source src="${item.output_path}" type="video/mp4">
+            </video>
+            <br>
+            <h3>Trajectory</h3>
+            <img src="/static/outputs/trajectory" alt="Trajectory Image">
+            <p>Trajectory length:</p>
+            <br>
+            <h3>Timer</h3>
+            <div class="timer">Timer not available (backend extension needed)</div>
+          `;
+          outputTarget.appendChild(block);
+        }
+      }
+    });
+
+    // Ini fake, cmn buat cek aja
+    const demoBlock = document.createElement("div");
+    demoBlock.className = "result-block";
+    demoBlock.innerHTML = `
+      <h3>Processed Video</h3>
+      <video controls>
+        <source src="/static/outputs/processed" type="video/mp4">
+      </video>
+      <br>
+      <h3>Trajectory</h3>
+      <img src="/static/outputs/trajectory" alt="Trajectory Image">
+      <p>Trajectory length:</p>
+      <br>
+      <h3>Timer</h3>
+      <div>Start: 1.2s — End: 9.8s<br>Total: 8.6s</div>
+      <br>
+      <a href="/static/outputs/result" class="download-link" download>Download Result</a>
+    `;
+    outputDiv.appendChild(demoBlock);
+
+  }
+
+  createUploadInterface("form-area-mwm");
+  createUploadInterface("form-area-radial");
+</script>
+
+</body>
+</html>
