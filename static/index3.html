@@ -308,127 +308,193 @@
       });
     });
 
-    //gambar radial arm
-    const canvas = document.getElementById('radialMaze');
-    const ctx = canvas.getContext('2d');
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
+   // === Variabel Global ===
+const canvas = document.getElementById('radialMaze');
+const ctx = canvas.getContext('2d');
+const cx = canvas.width / 2;
+const cy = canvas.height / 2;
 
-    const armLength = 140;
-    const armWidth = 40;
-    const treatRadius = 10;
-    const blockSize = 16;
+const armLength = 140;
+const armWidth = 40;
+const treatRadius = 10;
+const blockSize = 16;
 
-    let numArms = parseInt(document.getElementById("total_arms").value, 10);
-    let arms = generateArms(numArms);
+let numArms = parseInt(document.getElementById("total_arms").value, 10);
+let arms = generateArms(numArms);
+let clickedArms = [];
 
-    function generateArms(n) {
-        return Array.from({ length: n }, () => ({
-            state: 'none',
-            treat: false
-        }));
-    }
+function generateArms(n) {
+    return Array.from({ length: n }, () => ({
+        state: 'none',       // 'none' | 'trained'
+        treat: false,        // true | false
+        blocked: false       // true | false
+    }));
+}
 
-    function drawMaze() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawMaze() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        for (let i = 0; i < numArms; i++) {
-            const angle = (2 * Math.PI / numArms) * i;
+  const blockOffset = 35;
+  const blockHeight = armLength * 0.2;
 
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(angle);
+  for (let i = 0; i < numArms; i++) {
+    const angle = (2 * Math.PI / numArms) * i;
+    const armCenterAngle = angle - Math.PI / 2;
 
-            if (arms[i].state === 'trained') ctx.fillStyle = 'aqua';
-            else if (arms[i].state === 'blocked') ctx.fillStyle = 'red';
-            else ctx.fillStyle = 'white';
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
 
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
+    // Arm besar
+    ctx.fillStyle = arms[i].state === 'trained' ? 'deepskyblue' : 'white';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.rect(-armWidth / 2, 0, armWidth, armLength);
+    ctx.fill();
+    ctx.stroke();
 
-            ctx.beginPath();
-            ctx.rect(-armWidth / 2, 0, armWidth, armLength);
-            ctx.fill();
-            ctx.stroke();
+    // Persegi kecil (blocked / ikut biru jika arm trained dan not blocked)
+    ctx.fillStyle = arms[i].blocked
+      ? 'red'
+      : (arms[i].state === 'trained' ? 'deepskyblue' : 'white');
 
-            ctx.beginPath();
-            ctx.arc(0, armLength - 15, treatRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = arms[i].treat ? 'gold' : 'white';
-            ctx.fill();
-            ctx.stroke();
+    ctx.beginPath();
+    ctx.rect(-armWidth / 2, blockOffset, armWidth, blockHeight);
+    ctx.fill();
+    ctx.stroke();
 
-            ctx.restore();
-        }
+    // Treat
+    ctx.beginPath();
+    ctx.arc(0, armLength - 15, treatRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = arms[i].treat ? 'gold' : 'white';
+    ctx.fill();
+    ctx.stroke();
 
-        // bikin tengahnya
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        for (let i = 0; i < numArms; i++) {
-            const angle = (2 * Math.PI / numArms) * i - (Math.PI / numArms);
-            const x = cx + 50 * Math.cos(angle);
-            const y = cy + 50 * Math.sin(angle);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+    ctx.restore();
 
-    }
+    // Nomor arm
+    const labelDist = armLength + 10;
+    const lx = cx + labelDist * Math.cos(armCenterAngle);
+    const ly = cy + labelDist * Math.sin(armCenterAngle);
+    ctx.fillStyle = 'black';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((i + 1).toString(), lx, ly);
+  }
 
-    function handleClick(e) {
-        const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+  // Oktagon tengah
+ctx.fillStyle = 'white';
+ctx.beginPath();
+for (let i = 0; i < numArms; i++) {
+  const angle = (2 * Math.PI / numArms) * i - (Math.PI / numArms);
+  const x = cx + 50 * Math.cos(angle);
+  const y = cy + 50 * Math.sin(angle);
+  if (i === 0) ctx.moveTo(x, y);
+  else ctx.lineTo(x, y);
+}
+ctx.closePath();
+ctx.fill();
+ctx.stroke();
 
-        for (let i = 0; i < numArms; i++) {
-            const angle = (2 * Math.PI / numArms) * i;
-            const sin = Math.sin(-angle);
-            const cos = Math.cos(-angle);
+}
 
-            const dx = mx - cx;
-            const dy = my - cy;
 
-            const rx = dx * cos - dy * sin;
-            const ry = dx * sin + dy * cos;
 
-            if (
-                rx > -armWidth / 2 &&
-                rx < armWidth / 2 &&
-                ry > 0 &&
-                ry < armLength
-            ) {
-                const tx = 0;
-                const ty = armLength - 15;
-                const dist = Math.hypot(rx - tx, ry - ty);
-                if (dist < treatRadius) {
-                    arms[i].treat = !arms[i].treat;
+
+function handleClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    const blockOffset = 35;
+    const blockHeight = armLength * 0.2;
+
+    for (let i = 0; i < numArms; i++) {
+        const angle = (2 * Math.PI / numArms) * i;
+        const sin = Math.sin(-angle);
+        const cos = Math.cos(-angle);
+
+        const dx = mx - cx;
+        const dy = my - cy;
+
+        const rx = dx * cos - dy * sin;
+        const ry = dx * sin + dy * cos;
+
+        if (
+            rx > -armWidth / 2 &&
+            rx < armWidth / 2 &&
+            ry > 0 &&
+            ry < armLength
+        ) {
+            const tx = 0;
+            const ty = armLength - 15;
+            const dist = Math.hypot(rx - tx, ry - ty);
+
+            if (dist < treatRadius) {
+                // Lingkaran treat
+                arms[i].treat = !arms[i].treat;
+
+            } else if (ry > blockOffset && ry < blockOffset + blockHeight) {
+                // Persegi kecil (blocked)
+                arms[i].blocked = !arms[i].blocked;
+
+            } else {
+                // Klik persegi besar (trained)
+                if (arms[i].state === 'trained') {
+                    arms[i].state = 'none';
                 } else {
-                    const state = arms[i].state;
-                    arms[i].state = state === 'none' ? 'trained' :
-                                    state === 'trained' ? 'blocked' :
-                                    'none';
+                    arms[i].state = 'trained';
+                    // persegi kecil ikut biru hanya jika tidak merah
+                    // tidak perlu ubah flag, karena drawMaze akan handle
                 }
-                drawMaze();
-                break;
             }
+
+            // Simpan ke array klik
+            const existingIndex = clickedArms.findIndex(a => a.index === i);
+            const data = {
+                index: i,
+                treat: arms[i].treat,
+                blocked: arms[i].blocked,
+                state: arms[i].state
+            };
+
+            if (existingIndex !== -1) {
+                clickedArms[existingIndex] = data;
+            } else {
+                clickedArms.push(data);
+            }
+
+            console.log(clickedArms);
+
+            drawMaze();
+            break;
         }
     }
+}
 
-    document.getElementById("total_arms").addEventListener("change", function () {
-        let newVal = parseInt(this.value, 10);
-        if (!newVal || newVal <= 0) {
-            newVal = 8;
-            this.value = newVal;
-        }
 
-        numArms = newVal;
-        arms = generateArms(numArms);
-        drawMaze();
-    });
-
-    canvas.addEventListener('click', handleClick);
+// === Event Binding ===
+document.getElementById("total_arms").addEventListener("change", function () {
+    let newVal = parseInt(this.value, 10);
+    if (!newVal || newVal <= 0) {
+        newVal = 8;
+        this.value = newVal;
+    }
+    numArms = newVal;
+    arms = generateArms(numArms);
+    clickedArms = [];
     drawMaze();
+});
+
+canvas.addEventListener('click', handleClick);
+
+// === Init ===
+drawMaze();
+
+
+
 
   </script>
 </body>
