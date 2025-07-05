@@ -9,41 +9,77 @@
 
 <body>
   <header>
-    <h1>Behavioral Maze Analyzer</h1>
+    <h1>Radial Arm Maze Experiment Analyzer</h1>
   </header>
 
   <nav>
-    <a href="#" class="active">Radial Arm Maze</a>
-    <a href="#">About</a>
+    <a href="#" class="active" onclick="showPage('analyzer')">Analyzer</a>
+    <a href="#" onclick="showPage('calculator')">Calculator</a>
+    <a href="#" onclick="showPage('about')">About</a>
   </nav>
 
-  <div class="section">
+  <div id="analyzer-page" class="container">
+  <div class="section"> 
     <form id="uploadForm" enctype="multipart/form-data">
-      <h2>Radial Arm Maze Experiment Analizer</h2>
+      <h2 class="page_title">Upload Radial Arm Maze Data</h2>
+      <br>
+
+      <!-- <h3>Test Animal Metadata</h3>
       <label>Batch Name:</label><input type="text" name="batch_name" required>
       <label>Date:</label><input type="date" name="day" >
       <label>Basin Diameter (cm):</label><input type="number" name="diameter">
-      <label>Rat Length (cm):</label><input type="number" name="rat_length">
+      <label>Rat Length (cm):</label><input type="number" name="rat_length"> -->
+      <section class="form_parts">
+          <h3>Experiment Metadata</h3>
+          <label>Batch Name</label>
+          <input type="text" name="batch_name">
+          <label>Day</label>
+          <input type="text" name="experiment_day">
+          <label>Test Animal Type:</label>
+          <input type="text" name="animal_type">
+          <label>Age (weeks):</label>
+          <input type="number" name="age">
+          <label>Weight (grams):</label>
+          <input type="number" name="weight">
+      </section>
 
-      <label>Upload Experiment Folders:</label>
-      <button type="button" style="width:50px; margin:10px 1px;" onclick="addFolderInput()">+</button>
-      <div id="folder_input"></div>
+      <br>
+      <hr>
+
+      <section class="form_parts">
+        <h3>Upload Experiment Folders</h3>
+        <button type="button" style="width:170px;" onclick="addFolderInput()">+ Add more folder</button>
+        <div id="folder_input"></div>
+      </section>
+
+      <br>
+      <hr>
+
       <section class="form_parts">
           <h3>Maze Configurations</h3>
           <label>Total arms</label>
           <input type="number" name="total_arms" id="total_arms" value=8>
-          <label>Click to configurate maze</label>
-          <section>
-              <label>Arm 1 Click</label>
-              <label>Arm 2 Click</label>
-              <label>Treat</label>
-          </section>
+          <label>Click the graphic below to configurate maze</label>
           <div class="maze_container">
-              <canvas id="radialMaze" width="500" height="500"></canvas>
+              <canvas id="radialMaze" width="350" height="350"></canvas>
           </div>
+          <section class="graphic_info">
+            <div class="legend_item">
+              <span class="color_box aqua"></span>
+              <label>Trained (click an arm once)</label>
+            </div>
+            <div class="legend_item">
+              <span class="color_box red"></span>
+              <label>Blocked (click the same arm twice)</label>
+            </div>
+            <div class="legend_item">
+              <span class="color_box gold"></span>
+              <label>Treat (click the circle at arm end)</label>
+            </div>
+          </section>
       </section>
 
-      <button id="uploadButton" type="submit">Upload Video</button>  
+      <button id="uploadButton" type="submit">Upload Data</button>  
     </form>
   </div>
 
@@ -60,30 +96,50 @@
       <div id="item-list"></div>
     </div>
   </div>
+  </div>
+
+  <div id="calculator-page" class="container" style="display:none">
+    <div class="section">
+      <h2 class="page_title">Maze Calculator</h2>
+      <p>Coming soon...</p>
+    </div>
+  </div>
+
+  <div id="about-page" class="container" style="display:none">
+    <div class="section">
+      <h2 class="page_title">About</h2>
+      <p>This platform analyzes behavioral maze experiments in rodents using computer vision and AI, powered by FastAPI and YOLO. It supports batch uploads for Radial Arm Maze tasks.</p>
+    </div>
+  </div>
 
 
   <script>
     const progressBar = document.getElementById("progress_bar");
     const progress = document.getElementById("progress");
-    const percantage = document.getElementById("percantage");
+    const percentage = document.getElementById("percentage");
     const apiUrl = '/api/items/';
     const uploadForm = document.getElementById("uploadForm");
     const videoInput = document.getElementById("videoInput");
     const button = document.getElementById("uploadButton");
     const myProgressBar = document.querySelector(".progress");
 
-    function showSection(name) {
-      const sections = {
-        radial: document.getElementById('radial-section'),
-        about: document.getElementById('about-section')
-      };
-      for (let key in sections) sections[key].classList.add("hidden");
-      sections[name].classList.remove("hidden");
+    // PAGE CHANGER
+    function showPage(pageId) {
+      const pages = ["analyzer", "calculator", "about"];
+      pages.forEach(id => {
+        document.getElementById(`${id}-page`).style.display = id === pageId ? 'block' : 'none';
+      });
 
       document.querySelectorAll("nav a").forEach(a => a.classList.remove("active"));
-      document.querySelector(`nav a[onclick*="${name}"]`).classList.add("active");
+      document.querySelector(`nav a[onclick*="${pageId}"]`).classList.add("active");
     }
 
+    // load default page on startup
+    window.addEventListener("DOMContentLoaded", () => {
+      showPage("analyzer");
+    });
+
+    //reload page?
     window.onload = async () => {
         try {
           const res = await fetch(`/api/progress/`);
@@ -108,6 +164,7 @@
       }
     };
 
+    //LOADING PROGRESS BAR
     function pollProgress(vidID) {
       console.log(vidID)
       const interval = setInterval(async () => {
@@ -141,6 +198,7 @@
       }, 500);
     }
 
+    //TAMBAH INPUT FOLDER + CEK ISI FOLDER
     let counter = 0;
     function addFolderInput() {
       const list = document.getElementById("folder_input");
@@ -151,19 +209,33 @@
       div.innerHTML = `
         <label>Folder Name:</label>
         <input type="text" name="folder_name_${counter}" placeholder="Name" required>
-        <input type="file" name="folder" webkitdirectory directory multiple required>
+        <input type="file" name="folder" webkitdirectory directory multiple required id="folder_input_${counter}">
         <button type="button" style="background-color:#E62323; cursor:pointer; width:20%; margin:10px 1px;" onclick="deleteFolderInput('${id}')">Delete</button>
       `;
       list.appendChild(div);
+
+      // Tambahkan event listener setelah elemen dimasukkan ke DOM
+      const folderInput = div.querySelector(`#folder_input_${counter}`);
+      folderInput.addEventListener("change", function () {
+        const files = Array.from(folderInput.files);
+        const nonMP4 = files.filter(file => !file.name.toLowerCase().endsWith(".mp4"));
+
+        if (nonMP4.length > 0) {
+          alert("Folder hanya boleh berisi file .mp4!\nFile tidak valid:\n" + nonMP4.map(f => f.name).join('\n'));
+          folderInput.value = ""; // Reset input
+        }
+      });
+
       counter++;
     }
 
+    //UTK DELETE INPUT FOLDER
     function deleteFolderInput(id){
       container = document.getElementById(id);
       container.remove();
     }
 
-
+    //SUBMIT FORM
     document.getElementById("uploadForm").addEventListener("submit", async function (event) {
         event.preventDefault();
 
@@ -199,10 +271,12 @@
           alert("Please select at least one folder.");
           return;
       }
-      // Metadata (batch_name, date, etc.)
-      ["batch_name", "day", "diameter", "rat_length"].forEach(name => {
-          const value = document.querySelector(`[name="${name}"]`)?.value;
-          if (value) formData.append(name, value);
+      // Metadata (form bagian metadata eksperimen)
+      ["batch_name", "experiment_day", "animal_type", "age", "weight", "total_arms"].forEach(name => {
+        const value = document.querySelector(`[name="${name}"]`)?.value;
+        if (value !== undefined && value !== null) {
+          formData.append(name, value);
+        }
       });
 
       try {
@@ -337,7 +411,7 @@
       }
     }
 
-
+    //RADIAL ARM GRAPHIC
     const canvas = document.getElementById('radialMaze');
     const ctx = canvas.getContext('2d');
     const cx = canvas.width / 2;
@@ -351,6 +425,8 @@
     let numArms = parseInt(document.getElementById("total_arms").value, 10);
     let arms = generateArms(numArms);
 
+    let clickedArms = [];  
+
     function generateArms(n) {
         return Array.from({ length: n }, () => ({
             state: 'none',
@@ -359,105 +435,138 @@
     }
 
     function drawMaze() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        for (let i = 0; i < numArms; i++) {
-            const angle = (2 * Math.PI / numArms) * i;
+      for (let i = 0; i < numArms; i++) {
+          const angle = (2 * Math.PI / numArms) * i;
+          const armCenterAngle = angle - Math.PI / 2;
 
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(angle);
+          // Transformasi rotasi
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(angle);
 
-            if (arms[i].state === 'trained') ctx.fillStyle = 'aqua';
-            else if (arms[i].state === 'blocked') ctx.fillStyle = 'red';
-            else ctx.fillStyle = 'white';
+          // Warnai arm
+          if (arms[i].state === 'trained') ctx.fillStyle = 'aqua';
+          else if (arms[i].state === 'blocked') ctx.fillStyle = 'red';
+          else ctx.fillStyle = 'white';
 
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 2;
 
-            ctx.beginPath();
-            ctx.rect(-armWidth / 2, 0, armWidth, armLength);
-            ctx.fill();
-            ctx.stroke();
+          // Gambarkan arm (persegi panjang)
+          ctx.beginPath();
+          ctx.rect(-armWidth / 2, 0, armWidth, armLength);
+          ctx.fill();
+          ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(0, armLength - 15, treatRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = arms[i].treat ? 'gold' : 'white';
-            ctx.fill();
-            ctx.stroke();
+          // Gambarkan treat (lingkaran di ujung)
+          ctx.beginPath();
+          ctx.arc(0, armLength - 15, treatRadius, 0, 2 * Math.PI);
+          ctx.fillStyle = arms[i].treat ? 'gold' : 'white';
+          ctx.fill();
+          ctx.stroke();
 
-            ctx.restore();
-        }
+          ctx.restore();
 
-        // bikin tengahnya
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        for (let i = 0; i < numArms; i++) {
-            const angle = (2 * Math.PI / numArms) * i - (Math.PI / numArms);
-            const x = cx + 50 * Math.cos(angle);
-            const y = cy + 50 * Math.sin(angle);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+          // Tambahkan nomor di luar arm
+          const labelDist = armLength + 10;
+          const lx = cx + labelDist * Math.cos(armCenterAngle);
+          const ly = cy + labelDist * Math.sin(armCenterAngle);
+          ctx.fillStyle = 'black';
+          ctx.font = '16px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText((i + 1).toString(), lx, ly);
+      }
 
-    }
+      // Buat bentuk tengah heksagonal/octagonal
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      for (let i = 0; i < numArms; i++) {
+          const angle = (2 * Math.PI / numArms) * i - (Math.PI / numArms);
+          const x = cx + 50 * Math.cos(angle);
+          const y = cy + 50 * Math.sin(angle);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();   
+  }
 
-    function handleClick(e) {
-        const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
 
-        for (let i = 0; i < numArms; i++) {
-            const angle = (2 * Math.PI / numArms) * i;
-            const sin = Math.sin(-angle);
-            const cos = Math.cos(-angle);
+  function handleClick(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
 
-            const dx = mx - cx;
-            const dy = my - cy;
+      for (let i = 0; i < numArms; i++) {
+          const angle = (2 * Math.PI / numArms) * i;
+          const sin = Math.sin(-angle);
+          const cos = Math.cos(-angle);
 
-            const rx = dx * cos - dy * sin;
-            const ry = dx * sin + dy * cos;
+          const dx = mx - cx;
+          const dy = my - cy;
 
-            if (
-                rx > -armWidth / 2 &&
-                rx < armWidth / 2 &&
-                ry > 0 &&
-                ry < armLength
-            ) {
-                const tx = 0;
-                const ty = armLength - 15;
-                const dist = Math.hypot(rx - tx, ry - ty);
-                if (dist < treatRadius) {
-                    arms[i].treat = !arms[i].treat;
-                } else {
-                    const state = arms[i].state;
-                    arms[i].state = state === 'none' ? 'trained' :
-                                    state === 'trained' ? 'blocked' :
-                                    'none';
-                }
-                drawMaze();
-                break;
-            }
-        }
-    }
+          const rx = dx * cos - dy * sin;
+          const ry = dx * sin + dy * cos;
 
-    document.getElementById("total_arms").addEventListener("change", function () {
-        let newVal = parseInt(this.value, 10);
-        if (!newVal || newVal <= 0) {
-            newVal = 8;
-            this.value = newVal;
-        }
+          if (
+              rx > -armWidth / 2 &&
+              rx < armWidth / 2 &&
+              ry > 0 &&
+              ry < armLength
+          ) {
+              const tx = 0;
+              const ty = armLength - 15;
+              const dist = Math.hypot(rx - tx, ry - ty);
+              if (dist < treatRadius) {
+                  arms[i].treat = !arms[i].treat;
+              } else {
+                  const state = arms[i].state;
+                  arms[i].state = state === 'none' ? 'trained' :
+                                  state === 'trained' ? 'blocked' :
+                                  'none';
+              }
 
-        numArms = newVal;
-        arms = generateArms(numArms);
-        drawMaze();
-    });
+              const existingIndex = clickedArms.findIndex(a => a.index === i);
+              const data = {
+                  index: i,
+                  treat: arms[i].treat,
+                  state: arms[i].state
+              };
 
-    canvas.addEventListener('click', handleClick);
-    drawMaze();
+              if (existingIndex !== -1) {
+                  clickedArms[existingIndex] = data;
+              } else {
+                  clickedArms.push(data);
+              }
+              
+              console.log(clickedArms);
+
+              drawMaze();
+              break;
+          }
+      }
+  }
+
+  
+
+  document.getElementById("total_arms").addEventListener("change", function () {
+      let newVal = parseInt(this.value, 10);
+      if (!newVal || newVal <= 0) {
+          newVal = 8;
+          this.value = newVal;
+      }
+
+      numArms = newVal;
+      arms = generateArms(numArms);
+      drawMaze();
+  });
+
+  canvas.addEventListener('click', handleClick);
+  drawMaze();
 
   </script>
 </body>

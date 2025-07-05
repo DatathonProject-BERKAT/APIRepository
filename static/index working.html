@@ -79,7 +79,7 @@
   <script> 
     const progressBar = document.getElementById("progress_bar");
     const progress = document.getElementById("progress");
-    const percantage = document.getElementById("percantage");
+    const percentage = document.getElementById("percentage");
     const apiUrl = '/api/items/';
     const uploadForm = document.getElementById("uploadForm");
     const videoInput = document.getElementById("videoInput");
@@ -99,7 +99,7 @@
       document.querySelector(`nav a[onclick*="${name}"]`).classList.add("active");
     }
 
-      // fix this so that the loading percantage isnt going back to 0 when refreshed
+      // fix this so that the loading percentage isnt going back to 0 when refreshed
       window.onload = async () => {
         try {
           const res = await fetch(`/api/progress/`);

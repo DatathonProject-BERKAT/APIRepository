@@ -198,3 +198,65 @@
     .maze_container {
         text-align: center;
     }
+
+    .form_parts {
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+
+    .form_parts > h3{
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+
+    .page_title{
+      text-align: center;
+    }
+
+  
+.graphic_info {
+  font-size: 0.85rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 1em;
+  background-color: #f9f9f9;
+  max-width: 300px;
+  margin-left: 20px;
+}
+
+.legend_item {
+  display: flex;
+  align-items: center; /* Vertically center all children */
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.color_box {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: inline-block;
+  border-radius: 3px;
+}
+
+/* Ensure the label doesn't have inherited line-height that offsets it */
+.legend_item label {
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+
+
+
+/* Optional: colors if not already defined */
+.color_box.aqua {
+  background-color: aqua;
+}
+
+.color_box.red {
+  background-color: red;
+}
+
+.color_box.gold {
+  background-color: gold;
+}
