@@ -75,7 +75,8 @@
             const relativePath = file.webkitRelativePath.split('/').slice(1).join('/');
             formData.append("videos", file, `${batchName}/${folderName}/${relativePath}`);
         });
-        });
+        
+      });
 
 
         if (!hasFiles) {

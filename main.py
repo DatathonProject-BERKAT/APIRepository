@@ -34,7 +34,12 @@ items = []
 
 class Item(BaseModel):
     id: int
+    batch_name : str
+    date:str
+    rat_length:float
+    rat_weight:float
     video_path: str
+    trajectory_path:str
     output_path: str
 
 @app.get("/", response_class=FileResponse)
@@ -50,8 +55,7 @@ async def upload_folder(
     rat_length: Optional[str] = Form(None)
 ):
     print(f"Metadata: batch={batch_name}, day={day}, diameter={diameter}, rat_length={rat_length}")
-    
-    videoCounter = 0
+
     for video in videos:
         # This preserves the folder structure using the provided filename
         full_path = os.path.join(UPLOAD_DIR, video.filename)
@@ -60,20 +64,10 @@ async def upload_folder(
             contents = await video.read()
             f.write(contents)
         
-        print(f"Saved: {full_path}")
-        print(full_path.split("/")[-3])
-        print(getAllFolderPaths(full_path.split("/")[-3]))
-        
-        
         splittedPath = full_path.split(";")[1].split("/")
         id = splittedPath[0]
         folder = splittedPath[1]
-        
-        if videoCounter == 0:
-            for i in getAllFolderPaths(f"uploads/{batch_name} ;{id}"):
-                print(getAllFileName(i,"mp4"),"|||")
-                videoCounter += len(getAllFileName(i,"mp4"))
-        print(videoCounter)
+
         extension = os.path.splitext(full_path)[1]  # returns '.mp4'
         if extension == ".mp4":
             # model.process_video(full_path)
