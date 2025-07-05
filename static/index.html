@@ -4,42 +4,50 @@
   <meta charset="UTF-8">
   <title>Butterscotch</title>
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
-<style>
-    .progress {
-    position: relative;
-    width: 210px;
-    height: 30px;
-    background: #9cbab4;
-    border-radius: 5px;
-    overflow: hidden;
-  }
 
-  .progress__fill {
-    width: 0%;
-    height: 100%;
-    background: #009579;
-    transition: all 0.2s;
-  }
-
-  .progress__text {
-    position: absolute;
-    top: 50%;
-    right: 5px;
-    transform: translateY(-50%);
-    font: bold 14px "Quicksand", sans-serif;
-    color: #ffffff;
-  }
-
-</style>
 <body>
-  <div>
+  <header>
+    <h1>Behavioral Maze Analyzer</h1>
+  </header>
+
+  <nav>
+    <a href="#" class="active">Radial Arm Maze</a>
+    <a href="#">About</a>
+  </nav>
+
+  <div class="section">
     <form id="uploadForm" enctype="multipart/form-data">
-      <input type="file" id="videoInput" name="video" accept="video/mp4,video/webm" required>
-      <br><br>
+      <h2>Radial Arm Maze Experiment Analizer</h2>
+      <label>Batch Name:</label><input type="text" name="batch_name" required>
+      <label>Date:</label><input type="date" name="day" >
+      <label>Basin Diameter (cm):</label><input type="number" name="diameter">
+      <label>Rat Length (cm):</label><input type="number" name="rat_length">
+
+      <label>Upload Experiment Folders:</label>
+      <button type="button" style="width:50px; margin:10px 1px;" onclick="addFolderInput()">+</button>
+      <div id="folder_input"></div>
+
+      <section class="form_parts">
+          <h3>Maze Configurations</h3>
+          <label>Total arms</label>
+          <input type="number" name="total_arms" id="total_arms" value=8>
+          <label>Click to configurate maze</label>
+          <section>
+              <label>Arm 1 Click</label>
+              <label>Arm 2 Click</label>
+              <label>Treat</label>
+          </section>
+          <div class="maze_container">
+              <canvas id="radialMaze" width="500" height="500"></canvas>
+          </div>
+      </section>
+        
       <button id="uploadButton" type="submit">Upload Video</button>  
     </form>
   </div>
+
   <div id = "progress_bar">
     <div class="progress">
       <div class="progress__fill"></div>
@@ -47,7 +55,13 @@
     </div>
   </div>
 
-  <div id="item-list"></div>
+  <div class="section">
+    <div class="result">
+      <h2>Result</h2>
+      <div id="item-list"></div>
+    </div>
+  </div>
+
 
   <script>
     const progressBar = document.getElementById("progress_bar");
@@ -58,16 +72,27 @@
     const videoInput = document.getElementById("videoInput");
     const button = document.getElementById("uploadButton");
     const myProgressBar = document.querySelector(".progress");
-    
 
-    // fix this so that the loading percantage isnt going back to 0 when refreshed
+    function showSection(name) {
+      const sections = {
+        radial: document.getElementById('radial-section'),
+        about: document.getElementById('about-section')
+      };
+      for (let key in sections) sections[key].classList.add("hidden");
+      sections[name].classList.remove("hidden");
+
+      document.querySelectorAll("nav a").forEach(a => a.classList.remove("active"));
+      document.querySelector(`nav a[onclick*="${name}"]`).classList.add("active");
+    }
+
     window.onload = async () => {
-      try {
-        const res = await fetch(`/api/progress/`);
-        const progressData = await res.json(); // { "270625083022": 64.5, ... 
-        const inProgressId = Object.keys(progressData).find(
-          id => progressData[id] > 0 && progressData[id] < 100
-        )
+        try {
+          const res = await fetch(`/api/progress/`);
+          const progressData = await res.json(); // { "270625083022": 64.5, ... 
+          const inProgressId = Object.keys(progressData).find(
+            id => (progressData[id] > 0 && progressData[id] < 100) || progressData[id] == 303
+            )
+          console.log(inProgressId)
         if (inProgressId) {
           progressBar.hidden = false;
           updateProgressBar(myProgressBar, Math.round(progressData[inProgressId]));
@@ -78,57 +103,11 @@
           updateProgressBar(myProgressBar, 0);
           button.disabled = false;
         }
+        fetchItems()
       } catch (err) {
         console.error("Error getting progress:", err);
       }
     };
-
-
-    
-    uploadForm.addEventListener("submit", function(event) {
-      event.preventDefault();
-
-      isLoading = true;
-      button.disabled = true;
-
-      const file = videoInput.files[0];
-      if (!file) return alert("Please choose a file");
-
-      const timestamp = new Date().toISOString().replace(/\D/g, '').slice(0, 12); // ddmmyyHHMMSS
-      const renamedFile = new File([file], `${timestamp}.${file.name.split('.').pop()}`, { type: file.type });
-
-      const formData = new FormData();
-      formData.append("video", renamedFile);  // ✅ send renamed file
-
-      updateProgressBar(myProgressBar, 0);
-      progressBar.hidden = false;
-
-      pollProgress(timestamp);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/upload", true);
-
-      xhr.onload = async function () {
-      if (xhr.status === 200 || xhr.status === 303) {
-        const processedName = `processed_${timestamp}.mp4`;
-        const fileReady = await waitUntilFileExists(processedName);
-
-        if (fileReady) {
-          await fetchItems(); // ✅ update list only when file is ready
-        }
-          isLoading = false;
-          button.disabled = false;
-          progressBar.hidden = true;
-        } else {
-          alert("Upload failed.");
-          isLoading = false;
-          button.disabled = false;
-          progressBar.hidden = true;
-        }
-      };
-
-      xhr.send(formData);
-    });
 
     function pollProgress(vidID) {
       console.log(vidID)
@@ -163,74 +142,194 @@
       }, 500);
     }
 
-    let isFetching = false;
-    async function fetchItems() {
-      const res = await fetch(apiUrl);
-      const items = await res.json();
-      const list = document.getElementById('item-list');
-      list.innerHTML = '';
+    let counter = 0;
+    function addFolderInput() {
+      const list = document.getElementById("folder_input");
+      const div = document.createElement('div');
+      const id = `div${counter}`;
+      div.id = id;
 
-      const displayedIds = new Set();
+      div.innerHTML = `
+        <label>Folder Name:</label>
+        <input type="text" name="folder_name_${counter}" placeholder="Name" required>
+        <input type="file" name="folder" webkitdirectory directory multiple required>
+        <button type="button" style="background-color:#E62323; cursor:pointer; width:20%; margin:10px 1px;" onclick="deleteFolderInput('${id}')">Delete</button>
+      `;
+      list.appendChild(div);
+      counter++;
+    }
 
-      for (const item of items) {
-        if (displayedIds.has(item.id)) continue;
-        displayedIds.add(item.id);
+    function deleteFolderInput(id){
+      container = document.getElementById(id);
+      container.remove();
+    }
 
-        const div = document.createElement('div');
-        const exists = await checkFileExistence(`processed_${item.id}.mp4`);
-        if (exists) {
-          div.innerHTML = `
-            <strong>Video ID:</strong> ${item.id}<br>
-            <video width="720" height="480" controls>
-              <source src="${item.output_path}" type="video/mp4">
-              Your browser does not support the video tag.
-            </video>
-            <br>
-            <button onclick="deleteItem(${item.id})">Delete</button>
-            <hr>
-          `;
+
+    document.getElementById("uploadForm").addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        // isLoading = true;
+        button.disabled = true;
+
+        const formData = new FormData();
+        const folderInputs = document.querySelectorAll('input[type="file"][name="folder"]');
+        let hasFiles = false;
+
+        const batchName = document.querySelector('[name="batch_name"]').value.trim()+" ; "+getTimestamp() || "unnamed_batch";
+
+        folderInputs.forEach((input, index) => {
+        const folderNameInput = input.parentElement.querySelector('input[type="text"]');
+        const folderName = folderNameInput?.value || `folder_${index}`;
+
+        updateProgressBar(myProgressBar, 0);
+        progressBar.hidden = false;
+        
+        Array.from(input.files).forEach((file) => {
+          hasFiles = true;
+          const relativePath = file.webkitRelativePath.split('/').slice(1).join('/');
+          fileName = relativePath;
+          formData.append("videos", file, `${batchName}/${folderName}/${relativePath}`);
+          console.log(relativePath.split(".")[0]+" <<<<")
+          pollProgress(relativePath.split(".")[0]);
+            
+        });
+      });
+
+
+      if (!hasFiles) {
+          alert("Please select at least one folder.");
+          return;
+      }
+      // Metadata (batch_name, date, etc.)
+      ["batch_name", "day", "diameter", "rat_length"].forEach(name => {
+          const value = document.querySelector(`[name="${name}"]`)?.value;
+          if (value) formData.append(name, value);
+      });
+
+      try {
+          const res = await fetch("/upload", {
+          method: "POST",
+          body: formData,
+          });
+          if (res.ok) {
+              alert("upload success full")
+          } else {
+          }
+      } catch (error) {
+          console.error("Upload error:", error);
+          alert("Upload error. See console.");
+      }
+    });
+    
+      let isFetching = false;
+      async function fetchItems() {
+        const res = await fetch(apiUrl);
+        const items = await res.json();
+        const list = document.getElementById('item-list');
+        list.innerHTML = '';
+        
+        if (Object.keys(items).length > 0){
+          itemDictionary = {}
+          for (const item of items) {
+            if (!(item.batch_name in itemDictionary)){
+              itemDictionary[item.batch_name] = {};
+              console.log(item.folder_name) 
+            }
+          }
+          
+          for (key in itemDictionary){
+            for (item of items){
+              if (item.batch_name == key){
+                itemDictionary[item.batch_name][item.folder_name] = [];
+              }
+            }
+          }
+
+          for (item of items){
+            itemDictionary[item.batch_name][item.folder_name].push(item)
+          }
+          console.log(itemDictionary)
+          
+          for (batch in itemDictionary){
+            const div = document.createElement('div');
+            // const exists = await checkFileExistence(`processed_${output_path}.mp4`);
+            // if (exists) {
+            div.className = "result-block";
+            div.innerHTML = `<Strong>Batch: </Strong>: ${batch}`;
+            for (dir in itemDictionary[batch]){
+              const divDir = document.createElement('div');
+              divDir.innerHTML = `
+                &nbsp;&nbsp;<strong>Folder:</strong> ${dir}
+              `;
+
+              const btn = document.createElement("button");
+              btn.textContent = "Show Video";
+              btn.onclick = () => showVideoResult(divDir, itemDictionary[batch][dir],btn);
+
+              divDir.appendChild(btn);
+              div.appendChild(divDir)
+            }
+              list.appendChild(div);
+          }
+        }else{
+          const div = document.createElement('div');
+          div.innerHTML = "No Result Found!";
           list.appendChild(div);
         }
       }
-    }
 
-    async function waitUntilFileExists(fileName, interval = 500) {
-      while (true) {
-        const exists = await checkFileExistence(fileName);
-        if (exists) return true;
-        await new Promise(res => setTimeout(res, interval));
-      }
-    }
+      function showVideoResult(divDir, itemDictionary, button) {
+        // Check if already rendered
+        const existingVideos = divDir.querySelectorAll(".video-entry");
 
-    async function checkFileExistence(fileName) {
-        try {
-          const response = await fetch(`/api/isFileExist?file_name=${encodeURIComponent(fileName)}`);
-          
-          if (!response.ok) throw new Error("Request failed");
-
-          const exists = await response.json(); // this will be true or false
-          console.log(`File ${fileName} exists?`, exists);
-          
-          // You can do something with the result:
-          if (exists) {
-            // e.g., show download link
-            return true;
-          } else {
-            // show "not found" message
-            return false;
-          }
-        } catch (error) {
-          console.error("Error checking file existence:", error);
+        if (existingVideos.length > 0) {
+          // Remove them (hide)
+          existingVideos.forEach(div => div.remove());
+          button.textContent = "Show Video";
+          return;
         }
+
+        // Otherwise, render videos (show)
+        for (const file of itemDictionary) {
+          const divFile = document.createElement('div');
+          divFile.className = "video-entry";  // used for identification/removal
+          divFile.id = file.output_path;
+
+          divFile.innerHTML = `
+            <div>${file.id} | ${file.batch_name} | ${file.folder_name} | ${file.file_name}</div>
+            <video controls>
+              <source src="${file.output_path}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            <p>Trajectory:</p>
+            <img src="${file.trajectory_path}" alt="Not found">
+          `;
+          console.log(file.trajectory_path)
+
+          divDir.appendChild(divFile);
+        }
+
+        button.textContent = "Hide Video";
       }
 
-    async function deleteItem(id) {
-      await fetch(apiUrl + id, { method: 'DELETE' });
-      fetchItems();
+    
+    function getTimestamp() {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const year = now.getFullYear();
+        const month = pad(now.getMonth() + 1);
+        const day = pad(now.getDate());
+        const hour = pad(now.getHours());
+        const minute = pad(now.getMinutes());
+        const second = pad(now.getSeconds());
+        return `${year}${month}${day}${hour}${minute}${second}`;
     }
 
     function updateProgressBar(progressBar, value) {
-      if (value == 303){
+      if (isNaN(value)){
+        progressBar.querySelector(".progress__text").textContent = "Processing...";
+      }
+      else if (value == 303){
         progressBar.querySelector(".progress__text").textContent = "Encoding...";
         progressBar.querySelector(".progress__fill").style.width = "99%";
       }else{
@@ -239,10 +338,126 @@
       }
     }
 
-    
+        const canvas = document.getElementById('radialMaze');
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
 
-    // Load items on page load
-    fetchItems();
+    const armLength = 140;
+    const armWidth = 40;
+    const treatRadius = 10;
+    const blockSize = 16;
+
+    let numArms = parseInt(document.getElementById("total_arms").value, 10);
+    let arms = generateArms(numArms);
+
+    function generateArms(n) {
+        return Array.from({ length: n }, () => ({
+            state: 'none',
+            treat: false
+        }));
+    }
+
+    function drawMaze() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+
+            if (arms[i].state === 'trained') ctx.fillStyle = 'aqua';
+            else if (arms[i].state === 'blocked') ctx.fillStyle = 'red';
+            else ctx.fillStyle = 'white';
+
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.rect(-armWidth / 2, 0, armWidth, armLength);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, armLength - 15, treatRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = arms[i].treat ? 'gold' : 'white';
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // bikin tengahnya
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i - (Math.PI / numArms);
+            const x = cx + 50 * Math.cos(angle);
+            const y = cy + 50 * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+    }
+
+    function handleClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i;
+            const sin = Math.sin(-angle);
+            const cos = Math.cos(-angle);
+
+            const dx = mx - cx;
+            const dy = my - cy;
+
+            const rx = dx * cos - dy * sin;
+            const ry = dx * sin + dy * cos;
+
+            if (
+                rx > -armWidth / 2 &&
+                rx < armWidth / 2 &&
+                ry > 0 &&
+                ry < armLength
+            ) {
+                const tx = 0;
+                const ty = armLength - 15;
+                const dist = Math.hypot(rx - tx, ry - ty);
+                if (dist < treatRadius) {
+                    arms[i].treat = !arms[i].treat;
+                } else {
+                    const state = arms[i].state;
+                    arms[i].state = state === 'none' ? 'trained' :
+                                    state === 'trained' ? 'blocked' :
+                                    'none';
+                }
+                drawMaze();
+                break;
+            }
+        }
+    }
+
+    document.getElementById("total_arms").addEventListener("change", function () {
+        let newVal = parseInt(this.value, 10);
+        if (!newVal || newVal <= 0) {
+            newVal = 8;
+            this.value = newVal;
+        }
+
+        numArms = newVal;
+        arms = generateArms(numArms);
+        drawMaze();
+    });
+
+    canvas.addEventListener('click', handleClick);
+    drawMaze();
   </script>
 </body>
 </html>
