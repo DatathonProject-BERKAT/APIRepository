@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Butterscotch</title>
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="static/style.css">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
@@ -19,7 +19,7 @@
 
   <div class="section">
     <form id="uploadForm" enctype="multipart/form-data">
-      <h2>Experiment Metadata</h2>
+      <h2>Radial Arm Maze Experiment Analizer</h2>
       <label>Batch Name:</label><input type="text" name="batch_name" required>
       <label>Date:</label><input type="date" name="day" >
       <label>Basin Diameter (cm):</label><input type="number" name="diameter">
@@ -28,7 +28,21 @@
       <label>Upload Experiment Folders:</label>
       <button type="button" style="width:50px; margin:10px 1px;" onclick="addFolderInput()">+</button>
       <div id="folder_input"></div>
-        
+      <section class="form_parts">
+          <h3>Maze Configurations</h3>
+          <label>Total arms</label>
+          <input type="number" name="total_arms" id="total_arms" value=8>
+          <label>Click to configurate maze</label>
+          <section>
+              <label>Arm 1 Click</label>
+              <label>Arm 2 Click</label>
+              <label>Treat</label>
+          </section>
+          <div class="maze_container">
+              <canvas id="radialMaze" width="500" height="500"></canvas>
+          </div>
+      </section>
+
       <button id="uploadButton" type="submit">Upload Video</button>  
     </form>
   </div>
@@ -322,6 +336,128 @@
         progressBar.querySelector(".progress__fill").style.width = `${value}%`;
       }
     }
+
+
+    const canvas = document.getElementById('radialMaze');
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    const armLength = 140;
+    const armWidth = 40;
+    const treatRadius = 10;
+    const blockSize = 16;
+
+    let numArms = parseInt(document.getElementById("total_arms").value, 10);
+    let arms = generateArms(numArms);
+
+    function generateArms(n) {
+        return Array.from({ length: n }, () => ({
+            state: 'none',
+            treat: false
+        }));
+    }
+
+    function drawMaze() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+
+            if (arms[i].state === 'trained') ctx.fillStyle = 'aqua';
+            else if (arms[i].state === 'blocked') ctx.fillStyle = 'red';
+            else ctx.fillStyle = 'white';
+
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.rect(-armWidth / 2, 0, armWidth, armLength);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, armLength - 15, treatRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = arms[i].treat ? 'gold' : 'white';
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // bikin tengahnya
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i - (Math.PI / numArms);
+            const x = cx + 50 * Math.cos(angle);
+            const y = cy + 50 * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+    }
+
+    function handleClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        for (let i = 0; i < numArms; i++) {
+            const angle = (2 * Math.PI / numArms) * i;
+            const sin = Math.sin(-angle);
+            const cos = Math.cos(-angle);
+
+            const dx = mx - cx;
+            const dy = my - cy;
+
+            const rx = dx * cos - dy * sin;
+            const ry = dx * sin + dy * cos;
+
+            if (
+                rx > -armWidth / 2 &&
+                rx < armWidth / 2 &&
+                ry > 0 &&
+                ry < armLength
+            ) {
+                const tx = 0;
+                const ty = armLength - 15;
+                const dist = Math.hypot(rx - tx, ry - ty);
+                if (dist < treatRadius) {
+                    arms[i].treat = !arms[i].treat;
+                } else {
+                    const state = arms[i].state;
+                    arms[i].state = state === 'none' ? 'trained' :
+                                    state === 'trained' ? 'blocked' :
+                                    'none';
+                }
+                drawMaze();
+                break;
+            }
+        }
+    }
+
+    document.getElementById("total_arms").addEventListener("change", function () {
+        let newVal = parseInt(this.value, 10);
+        if (!newVal || newVal <= 0) {
+            newVal = 8;
+            this.value = newVal;
+        }
+
+        numArms = newVal;
+        arms = generateArms(numArms);
+        drawMaze();
+    });
+
+    canvas.addEventListener('click', handleClick);
+    drawMaze();
 
   </script>
 </body>
