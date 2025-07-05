@@ -21,7 +21,7 @@ class CNN_Model:
         self.cv2 = cv2
         self.progress = {}
     
-    def process_video(self, vidPath):
+    def process_video(self, vidPath,identitity=""):
         cap = self.cv2.VideoCapture(vidPath)
         if not cap.isOpened():
             raise ValueError(f"Could not open video file: {vidPath}")
@@ -34,9 +34,9 @@ class CNN_Model:
         base_filename = self.os.path.basename(vidPath)
         filename = self.os.path.splitext(base_filename)[0]
         
-        raw_output_path = self.os.path.join(output_folder, f"raw_{filename}.avi")
-        final_output_path = self.os.path.join(output_folder, f"processed_{base_filename}")
-        trajectory_path = self.os.path.join(output_folder, f"trajectory_{filename}.jpg")
+        raw_output_path = self.os.path.join(output_folder, f"raw_{identitity}{filename}.avi")
+        final_output_path = self.os.path.join(output_folder, f"processed_{identitity}{base_filename}")
+        trajectory_path = self.os.path.join(output_folder, f"trajectory_{identitity}{filename}.jpg")
         
         fourcc = self.cv2.VideoWriter_fourcc(*'mp4v')
         out = self.cv2.VideoWriter(
@@ -83,19 +83,8 @@ class CNN_Model:
                 trail_points.append((cx, cy))
 
             # Draw trail on video frame
-            # ==========================================================================
-            # MEASURING DISTANCE (IN PROGRESS)
-            last_point = None
-            distance = 0
             for point in trail_points:
                 self.cv2.circle(frame, point, radius=3, color=(0, 255, 0), thickness=-1)
-                if last_point == None:
-                    last_point = point
-                else:
-                    distance += self.pixel_distance(last_point,point)
-                    last_point = point
-                print(f"{self.convertPxToCM(distance,120,600)} CM <----")
-            # ==========================================================================
 
             out.write(frame)
 
@@ -132,16 +121,16 @@ class CNN_Model:
 
         # return f"/static/outputs/processed_{base_filename}"
 
-    # ==========================================================================
-    # MEASURING DISTANCE (IN PROGRESS)
-    def pixel_distance(self,p1, p2):
-        return self.math.dist(p1, p2)
+    # # ==========================================================================
+    # # MEASURING DISTANCE (IN PROGRESS)
+    # def pixel_distance(self,p1, p2):
+    #     return self.math.dist(p1, p2)
     
-    def convertPxToCM(self, pixelDistance,realDiameterInCM,diameterInPixel):
-        scale_cm_per_pixel = realDiameterInCM / diameterInPixel
-        real_distance_cm = pixelDistance * scale_cm_per_pixel
-        return real_distance_cm
-    # ==========================================================================
+    # def convertPxToCM(self, pixelDistance,realDiameterInCM,diameterInPixel):
+    #     scale_cm_per_pixel = realDiameterInCM / diameterInPixel
+    #     real_distance_cm = pixelDistance * scale_cm_per_pixel
+    #     return real_distance_cm
+    # # ==========================================================================
 
 
 if __name__ == "__main__":
@@ -151,14 +140,13 @@ if __name__ == "__main__":
     # import torch
     # print("CUDA available:", torch.cuda.is_available())
     # print("Current device:", torch.cuda.current_device())
-    # print("Device name:", torch.cuda.get_device_name(torch.cuda.current_device()))
-    
-    l = [1,2,3,4,5,6,7,8]
-    
-    lastNum = None
-    for i in l:
-        if lastNum == None:
-            lastNum = i
-        else:
-            print(lastNum,i)
-            lastNum = i
+    # print("Device name:", torch.cuda.get_device_name(torch.cuda.current_device()))\
+    import os
+    def getAllFileName(path: str, extension: str) -> list[str]:
+        file_names = []
+        for file in os.listdir(path):
+            full_path = os.path.join(path, file)
+            if os.path.isfile(full_path) and file.lower().endswith(f".{extension.lower()}"):
+                file_names.append(full_path)
+        return file_names
+    print(getAllFileName("uploads/batch 1 ; 20250705063201/one","mp4"))

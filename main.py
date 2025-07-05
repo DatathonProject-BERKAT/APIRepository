@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from AImodel import CNN_Model
-from typing import List,Dict
+from typing import List,Dict,Optional
 import shutil
 import threading
 import os
@@ -41,6 +41,50 @@ class Item(BaseModel):
 def serve_index():
     return FileResponse("static/index.html")
 
+@app.post("/upload")
+async def upload_folder(
+    videos: List[UploadFile] = File(...),
+    batch_name: Optional[str] = Form(None),
+    day: Optional[str] = Form(None),
+    diameter: Optional[str] = Form(None),
+    rat_length: Optional[str] = Form(None)
+):
+    print(f"Metadata: batch={batch_name}, day={day}, diameter={diameter}, rat_length={rat_length}")
+    
+    videoCounter = 0
+    for video in videos:
+        # This preserves the folder structure using the provided filename
+        full_path = os.path.join(UPLOAD_DIR, video.filename)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, "wb") as f:
+            contents = await video.read()
+            f.write(contents)
+        
+        print(f"Saved: {full_path}")
+        print(full_path.split("/")[-3])
+        print(getAllFolderPaths(full_path.split("/")[-3]))
+        
+        
+        splittedPath = full_path.split(";")[1].split("/")
+        id = splittedPath[0]
+        folder = splittedPath[1]
+        
+        if videoCounter == 0:
+            for i in getAllFolderPaths(f"uploads/{batch_name} ;{id}"):
+                print(getAllFileName(i,"mp4"),"|||")
+                videoCounter += len(getAllFileName(i,"mp4"))
+        print(videoCounter)
+        extension = os.path.splitext(full_path)[1]  # returns '.mp4'
+        if extension == ".mp4":
+            # model.process_video(full_path)
+            threading.Thread(
+                target = model.process_video,
+                args=(full_path,f" ; {id} ; {folder} ;"),
+                daemon=True
+            ).start()
+    
+    return {"status": "ok", "saved": len(videos)}
+
 @app.post("/upload", response_model=Item)
 async def upload_file(
     video: UploadFile = File(...)
@@ -57,7 +101,7 @@ async def upload_file(
         daemon=True
     ).start()
 
-    # Prepare and return item info
+    # Prepare and return item info|
     item = Item(
         id=int(video.filename.split('.')[0]),  # assumes filename is timestamp.ext
         video_path=f"/static/{video.filename}",
@@ -120,14 +164,6 @@ def delete_item(item_id: int):
             return {"message": "Item deleted"}
     raise HTTPException(status_code=404, detail="Item not found")
 
-def get_all_file_paths(folder_path):
-        file_paths = []
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                full_path = os.path.join(root, file)
-                file_paths.append(full_path)
-        return file_paths
-    
 def is_video_playable(path):
     cap = cv2.VideoCapture(path)
     
@@ -143,3 +179,36 @@ def is_video_playable(path):
         return False
 
     return True
+
+def clearingFolder(folder_path):
+    if not os.path.exists(folder_path):
+        print(f"Folder '{folder_path}' does not exist.")
+        return
+    
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+           os.remove(file_path)
+
+def getAllFolderPaths(path: str) -> list[str]:
+    folder_paths = []
+    for root, dirs, _ in os.walk(path):
+        for d in dirs:
+            folder_paths.append(os.path.join(root, d))
+    return folder_paths
+
+
+def get_all_file_paths(folder_path):
+        file_paths = []
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                full_path = os.path.join(root, file)
+                file_paths.append(full_path)
+        return file_paths
+def getAllFileName(path: str, extension: str) -> list[str]:
+        file_names = []
+        for file in os.listdir(path):
+            full_path = os.path.join(path, file)
+            if os.path.isfile(full_path) and file.lower().endswith(f".{extension.lower()}"):
+                file_names.append(full_path)
+        return file_names

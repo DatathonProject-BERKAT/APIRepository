@@ -33,6 +33,7 @@
     position: absolute;
     top: 50%;
     right: 100%;
+    left : 100%;
     transform: translateY(-50%);
     font: bold 14px "Quicksand", sans-serif;
     color: #ffffff;
